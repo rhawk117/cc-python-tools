@@ -1,0 +1,60 @@
+github:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+
+claude-config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .claude/**
+
+packages:
+  - changed-files:
+      - any-glob-to-any-file:
+          - packages/**
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tests/**
+          - "**/conftest.py"
+          - "**/test_*.py"
+          - pytest.toml
+
+scripts:
+  - changed-files:
+      - any-glob-to-any-file:
+          - scripts/**
+          - .github/scripts/**
+          - Makefile
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - README.md
+          - SECURITY.md
+          - LICENSE
+          - "packages/*/README.md"
+
+supply-chain:
+  - changed-files:
+      - any-glob-to-any-file:
+          - pyproject.toml
+          - "**/pyproject.toml"
+          - uv.lock
+          - .github/dependabot.yml
+
+"plugin:manifest":
+  - changed-files:
+      - any-glob-to-any-file:
+          - .claude-plugin/**
+
+"plugin:hooks":
+  - changed-files:
+      - any-glob-to-any-file:
+          - hooks/**
+
+"plugin:mcp":
+  - changed-files:
+      - any-glob-to-any-file:
+          - mcp-servers/**

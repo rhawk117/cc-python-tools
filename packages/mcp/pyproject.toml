@@ -1,0 +1,23 @@
+[project]
+name = "python-agent-tools-mcp"
+version = "0.1.0"
+description = "The agent-tools-mcp server for python-agent-tools"
+readme = "README.md"
+authors = [
+    { name = "rhawk117", email = "noplaceLike127dot0dot0dot1@proton.me" },
+]
+requires-python = ">=3.14"
+dependencies = [
+    "mcp>=2.3.0",
+    "python-agent-tools-core",
+]
+
+[project.scripts]
+python-agent-tools-mcp = "python_agent_tools_mcp.main:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+python-agent-tools-core = { workspace = true }

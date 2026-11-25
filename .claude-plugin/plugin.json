@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "python-agent-tools",
+  "displayName": "python-agent-tools",
+  "version": "0.1.0",
+  "description": "Python tooling for agentic coding in Claude Code: plugin hooks and the agent-tools-mcp server, built on a uv workspace.",
+  "homepage": "https://github.com/rhawk117/cc-python-tools",
+  "repository": "https://github.com/rhawk117/cc-python-tools",
+  "author": {
+    "name": "rhawk117"
+  },
+  "mcpServers": "./mcp-servers/agent-tools-mcp.json",
+  "keywords": [
+    "python",
+    "uv",
+    "hooks",
+    "mcp"
+  ]
+}
