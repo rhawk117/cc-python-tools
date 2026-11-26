@@ -26,6 +26,7 @@ TIER_NAMES_BY_TREE = {
     'core': CORE_TIER_NAMES,
     'mcp': CORE_TIER_NAMES | {'e2e'},
     'hooks': CORE_TIER_NAMES,
+    'docs': CORE_TIER_NAMES | {'e2e'},
 }
 
 
