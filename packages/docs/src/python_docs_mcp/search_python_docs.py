@@ -9,8 +9,8 @@ from python_docs_mcp.schemas import base as schemas
 from python_docs_mcp.schemas.domain_types import PythonVersion
 
 if TYPE_CHECKING:
-    from python_docs_mcp.catalogs import DocumentationCatalogs
     from python_docs_mcp.matching import SymbolMatch
+    from python_docs_mcp.stores.catalogs import DocumentationCatalogs
 
 DEFAULT_SEARCH_LIMIT = 10
 

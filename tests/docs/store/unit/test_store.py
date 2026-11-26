@@ -9,7 +9,7 @@ from python_docs_mcp.core.exception import (
     RetrievalFailedError,
     VersionNotPublishedError,
 )
-from python_docs_mcp.store import CachedLoader
+from python_docs_mcp.stores.store import CachedLoader
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

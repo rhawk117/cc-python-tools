@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 import anyio
 from cachetools import TTLCache
 
-from python_docs_mcp.disk_cache import NullInventoryStore
 from python_docs_mcp.progress import ProgressBoard
-from python_docs_mcp.repository import DocumentationSource, documentation_http_client
 from python_docs_mcp.services import CatalogLoader, DocumentationService, SectionLoader
-from python_docs_mcp.store import CachedLoader
+from python_docs_mcp.stores.disk_cache import NullInventoryStore
+from python_docs_mcp.stores.repository import DocumentationSource, documentation_http_client
+from python_docs_mcp.stores.store import CachedLoader
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Hashable
@@ -20,10 +20,10 @@ if TYPE_CHECKING:
     import httpx2
     from anyio.abc import TaskGroup
 
-    from python_docs_mcp.disk_cache import InventoryStore
     from python_docs_mcp.matching import SymbolCatalog
     from python_docs_mcp.schemas.domain_types import DocumentationUrl, PythonVersion
     from python_docs_mcp.schemas.settings import Settings
+    from python_docs_mcp.stores.disk_cache import InventoryStore
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)

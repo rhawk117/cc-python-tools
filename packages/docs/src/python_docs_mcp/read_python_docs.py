@@ -11,10 +11,10 @@ from python_docs_mcp.schemas import base as schemas
 from python_docs_mcp.schemas.domain_types import PythonVersion
 
 if TYPE_CHECKING:
-    from python_docs_mcp.catalogs import DocumentationCatalogs
     from python_docs_mcp.matching import SymbolCatalog
     from python_docs_mcp.schemas.domain_types import Symbol
     from python_docs_mcp.schemas.settings import Settings
+    from python_docs_mcp.stores.catalogs import DocumentationCatalogs
 
 DEFAULT_PAGE_CHARACTERS = 8_000
 

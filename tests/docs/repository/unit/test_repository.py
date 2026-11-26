@@ -11,11 +11,6 @@ from python_docs_mcp.core.exception import (
     VersionNotPublishedError,
 )
 from python_docs_mcp.progress import ProgressBoard
-from python_docs_mcp.repository import (
-    DocumentationSource,
-    documentation_http_client,
-    inventory_url,
-)
 from python_docs_mcp.schemas.domain_types import (
     DocumentationUrl,
     PythonVersion,
@@ -23,6 +18,11 @@ from python_docs_mcp.schemas.domain_types import (
     create_python_version,
 )
 from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.stores.repository import (
+    DocumentationSource,
+    documentation_http_client,
+    inventory_url,
+)
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages

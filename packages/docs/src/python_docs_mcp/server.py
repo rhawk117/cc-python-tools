@@ -19,13 +19,13 @@ from python_docs_mcp.core.exception import (
     InvalidVersionError,
     VersionRequiredError,
 )
-from python_docs_mcp.disk_cache import create_inventory_store
 from python_docs_mcp.project import resolve_floor
 from python_docs_mcp.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
 from python_docs_mcp.schemas.base import VersionText
 from python_docs_mcp.schemas.domain_types import create_python_version
 from python_docs_mcp.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
 from python_docs_mcp.services import call_deadline
+from python_docs_mcp.stores.disk_cache import create_inventory_store
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping

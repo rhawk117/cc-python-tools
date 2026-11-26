@@ -7,10 +7,10 @@ import httpx2
 import pytest
 from python_docs_mcp.composition import ServiceOptions, open_documentation_service
 from python_docs_mcp.core.exception import CallDeadlineExceededError, VersionNotPublishedError
-from python_docs_mcp.disk_cache import NullInventoryStore
 from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.services import call_deadline
+from python_docs_mcp.stores.disk_cache import NullInventoryStore
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages
