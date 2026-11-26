@@ -32,8 +32,17 @@ def has_ambiguous_path(path: str) -> bool:
 
 
 def ambiguous_url_violation(url: str) -> AmbiguousUrlError | None:
-    if has_unsafe_characters(url) or has_ambiguous_path(urlsplit(url).path):
+    if has_unsafe_characters(url):
         return AmbiguousUrlError()
+
+    try:
+        path = urlsplit(url).path
+    except ValueError:
+        return AmbiguousUrlError()
+
+    if has_ambiguous_path(path):
+        return AmbiguousUrlError()
+
     return None
 
 

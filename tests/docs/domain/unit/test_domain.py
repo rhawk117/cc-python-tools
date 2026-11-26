@@ -60,6 +60,8 @@ def ambiguous_url_cases() -> pytest.MarkDecorator:
         'newline': 'https://docs.python.org/3.13/library/os.html\n',
         'backslash': 'https://docs.python.org/3.13\\library/os.html',
         'control': 'https://docs.python.org/3.13/library/\x00os.html',
+        'unbalanced-host-bracket': 'https://[',
+        'bracket-after-host': 'https://docs.python.org[/3.13/',
     }
     return pytest.mark.parametrize(
         'url', [pytest.param(url, id=name) for name, url in urls.items()]
