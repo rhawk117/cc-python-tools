@@ -13,8 +13,9 @@ from mcp.types import (
 )
 from python_agent_tools_core.project import PROJECT_ROOT_VARIABLE
 from python_docs_mcp.app import complete_documentation
+from python_docs_mcp.core.exception import ServiceUnavailableError
 from python_docs_mcp.lifespan import ServiceOptions
-from python_docs_mcp.services.completions import RESOURCE_URI, ServiceUnavailableError
+from python_docs_mcp.services.completions import RESOURCE_URI
 from python_docs_mcp.stores.disk_cache import DATA_DIRECTORY_VARIABLE, create_inventory_store
 
 from tests.docs.support.docs_site import DocsSite
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
 
     from python_agent_tools_core.version import PythonVersion
 
-    from tests.docs.conftest import ServerHarness
+    from tests.docs.support.server import ServerHarness
 
 READ_TOOL = 'read_python_docs'
 TEMPLATE = ResourceTemplateReference(uri=RESOURCE_URI)

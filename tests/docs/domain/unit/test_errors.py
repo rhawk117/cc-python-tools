@@ -233,7 +233,7 @@ class TestErrors:
         assert issubclass(error_class, DocumentationToolsError)
 
     def test_every_source_error_class_exists(self) -> None:
-        assert len(error_classes()) == 27
+        assert len(error_classes()) == 28
 
     def test_permanent_miss_is_a_documentation_error(self) -> None:
         assert issubclass(VersionNotPublishedError, PermanentMissError)

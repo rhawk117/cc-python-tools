@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from mcp.types import CallToolResult
 
-    from tests.docs.conftest import ServerHarness
+    from tests.docs.support.server import ServerHarness
 
 SEARCH_TOOL = 'search_python_docs'
 READ_TOOL = 'read_python_docs'

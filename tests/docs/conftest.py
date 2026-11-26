@@ -1,49 +1,8 @@
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
 import pytest
-from mcp import Client
-from python_docs_mcp.app import server
-from python_docs_mcp.lifespan import ServerConfig, ServiceOptions, get_config_registry
-from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.lifespan import get_config_registry
 
 from tests.docs.support.clock import FakeClock
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Mapping
-
-    from python_docs_mcp.core.interfaces import ConfigRegistry
-
-
-@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
-class FixedConfigProvider:
-    config: ServerConfig
-
-    def provide_config(self) -> ServerConfig:
-        return self.config
-
-
-@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
-class ServerHarness:
-    registry: ConfigRegistry
-
-    @asynccontextmanager
-    async def connect(
-        self,
-        *,
-        settings: Settings | None = None,
-        options: ServiceOptions | None = None,
-        environment: Mapping[str, str] | None = None,
-    ) -> AsyncGenerator[Client]:
-        config = ServerConfig(
-            settings=settings or Settings(),
-            options=options or ServiceOptions(),
-            environment=environment or {},
-        )
-        with self.registry.override(FixedConfigProvider(config=config)):
-            async with Client(server) as client:
-                yield client
+from tests.docs.support.server import ServerHarness
 
 
 @pytest.fixture

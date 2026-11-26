@@ -23,8 +23,8 @@ if TYPE_CHECKING:
 
     from python_docs_mcp.stores.disk_cache import InventoryStore
 
-    from tests.docs.conftest import ServerHarness
     from tests.docs.support.clock import FakeClock
+    from tests.docs.support.server import ServerHarness
 
 SUFFIXES = {'.inv', '.sha256'}
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'

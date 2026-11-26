@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from mcp import Client
     from python_docs_mcp.services.documentation_service import DocumentationService
 
-    from tests.docs.conftest import ServerHarness
+    from tests.docs.support.server import ServerHarness
 
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
 SEARCH_TOOL = 'search_python_docs'

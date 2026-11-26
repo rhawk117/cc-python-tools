@@ -12,8 +12,6 @@ from python_agent_tools_core.exception import (
 from python_agent_tools_core.project import resolve_floor
 from python_agent_tools_core.version import PythonVersion, create_python_version
 
-from python_docs_mcp.core.exception import DocumentationToolsError
-
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -26,11 +24,6 @@ RESOURCE_URI = 'python-docs://{version}/{symbol}'
 MAX_COMPLETION_VALUES = 100
 VERSION_ARGUMENT = 'version'
 SYMBOL_ARGUMENT = 'symbol'
-
-
-class ServiceUnavailableError(DocumentationToolsError):
-    def __init__(self) -> None:
-        super().__init__('The documentation service is not running, so nothing can be completed.')
 
 
 def version_window(settings: Settings) -> list[str]:

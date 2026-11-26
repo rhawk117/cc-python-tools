@@ -12,6 +12,7 @@ from python_agent_tools_core.exception import InvalidVersionError, VersionRequir
 from python_agent_tools_core.project import resolve_floor
 from python_agent_tools_core.version import create_python_version
 
+from python_docs_mcp.core.exception import ServiceUnavailableError
 from python_docs_mcp.lifespan import (
     ServerLifespan,
     ServerState,
@@ -25,7 +26,6 @@ from python_docs_mcp.services import search_python_docs as search_use_case
 from python_docs_mcp.services.completions import (
     RESOURCE_URI,
     DocumentationCompletions,
-    ServiceUnavailableError,
 )
 from python_docs_mcp.services.documentation_service import DocumentationService
 from python_docs_mcp.services.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest

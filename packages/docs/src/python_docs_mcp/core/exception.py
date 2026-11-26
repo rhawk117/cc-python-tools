@@ -148,3 +148,8 @@ class OffsetOutOfRangeError(DocumentationError):
 class CapacityError(DocumentationToolsError, ValueError):
     def __init__(self, larger: str, smaller: str) -> None:
         super().__init__(f'{larger} must be at least {smaller}')
+
+
+class ServiceUnavailableError(DocumentationToolsError):
+    def __init__(self) -> None:
+        super().__init__('The documentation service is not running, so nothing can be completed.')
