@@ -21,6 +21,28 @@ Claude Code changes major behaviour.
   (`mcp/server/mcpserver/server.py`).
 - A tool that takes a `Context` can call `report_progress`, `elicit` (form mode),
   `elicit_url` (URL mode) and `log` (`mcp/server/mcpserver/context.py`).
+- **Confirmed (building `python-docs-mcp`):** a tool gets its request `Context` only as a
+  parameter annotated `Context` (`find_context_parameter`,
+  `mcp/server/mcpserver/utilities/context_injection.py:13`; `tools/base.py:88-89`). There is no
+  context variable to read it from, and the parameter is left out of the input schema. Under
+  ruff `max-args = 3` this cost a `PLR0913` noqa on each docs tool
+  (`packages/docs/src/python_agent_tools_docs/server.py:97` and `:115`).
+- **Confirmed:** `Context.report_progress(progress, total=None, message=None)`
+  (`mcp/server/mcpserver/context.py:120`) is a no-op when the caller sent no progress token
+  (`report_progress` docstring, `mcp/server/session.py:429`). A client opts in by passing
+  `progress_callback` to `Client.call_tool` (`mcp/client/client.py:761`); see
+  `tests/docs/server/e2e/test_progress.py`.
+- **Confirmed:** `MCPServer.resource(uri)` registers a resource template when the URI holds
+  `{params}` and a static resource otherwise (`mcp/server/mcpserver/server.py:788`, docstring).
+  Its `security` argument sets the path-safety policy for extracted template parameters and
+  defaults to the server's `resource_security`. `MCPServer.completion()`
+  (`server.py:739`) registers the one `completion/complete` handler, called with
+  `(ref, argument, context)`. See `tests/docs/server/e2e/test_resources.py`.
+- **Confirmed:** `ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)`
+  (`READ_ONLY_REMOTE`, `packages/docs/src/python_agent_tools_docs/server.py:44`) serializes as
+  `readOnlyHint`, `idempotentHint` and `openWorldHint`. Checked on 2026-11-25 with
+  `ToolAnnotations(...).model_dump(by_alias=True, exclude_none=True)`, which printed
+  `{'readOnlyHint': True, 'idempotentHint': True, 'openWorldHint': True}`.
 - A tool's `outputSchema` is built from its return annotation through a Pydantic
   `TypeAdapter`. Accepted: `BaseModel`, `TypedDict`, primitives (wrapped as
   `{"result": ...}`), `dict[str, X]`, and other annotated classes such as dataclasses.
@@ -112,6 +134,16 @@ Source: [mark tools that are safe to call twice](https://code.claude.com/docs/en
 - `mcpServers` in `plugin.json` accepts a path to a `.json` file (which may hold several
   servers), an `.mcpb` or `.dxt` bundle, an inline map, or an array of these
   ([plugins reference, mcpServers](https://code.claude.com/docs/en/plugins-reference.md#mcpservers)).
+- **Confirmed:** `mcpServers` as an array of two `.json` paths is accepted.
+  `.claude-plugin/plugin.json` holds
+  `["./mcp-servers/agent-tools-mcp.json","./mcp-servers/python-docs-mcp.json"]`, and
+  `claude plugin validate --strict .` on 2026-11-25 printed both servers (`agent-tools-mcp` and
+  `python-docs-mcp`) and "✔ Validation passed", as reported by the build session. Its
+  directory-profile checks (`README_TRIVIAL`, `ICON_MISSING`) and the "Hosts not declared: list
+  what these parts reach under network.hosts" note do not change the verdict.
+- **Sandbox:** inside the Claude Code Bash sandbox `.mcp.json` appears as a character device and
+  `uv.lock` is read-only, so `claude plugin validate --strict` and `make pre-commit` fail there
+  and pass outside it (2026-11-25, as reported by the build session).
 - `${CLAUDE_PLUGIN_ROOT}` resolves in a stdio server's `command`, `args` and `env`.
   `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA` and `CLAUDE_PROJECT_DIR` are exported to the
   process, and `${user_config.KEY}` substitutes saved values. Use `CLAUDE_PLUGIN_DATA` for
@@ -129,6 +161,14 @@ Source: [mark tools that are safe to call twice](https://code.claude.com/docs/en
 In 2.16.2, `AsyncClient` takes `follow_redirects` (default `False`), the default timeout is
 5 seconds for connect, read, write and pool, `MockTransport` is exported for tests, and
 `AsyncHTTPTransport` takes `retries` (default 0) (`httpx2/_client.py`, `httpx2/_config.py`).
+**Contradicted:** the default request header is `Accept-Encoding: gzip, deflate, zstd`, not
+`gzip, deflate, br`. It is built from the decoders installed (`ACCEPT_ENCODING`,
+`httpx2/_client.py:108`, used at `:291`), and `uv run python` on 2026-11-25 printed
+`gzip, deflate, zstd`. `aiter_bytes` yields decoded bytes (`httpx2/_models.py:993-996`), so byte
+progress against `Content-Length` is exact only for an uncompressed body.
+`docs.python.org/3.13/objects.inv` answered on 2026-11-25 with `content-type: application/octet-stream`, `content-length: 151561` and no `Content-Encoding`, so its progress
+is exact today.
+
 Other changes from httpx: truststore replaces certifi, `Headers.get` returns `str | None`, and
 HTTP/2 needs the `http2` extra.
 
@@ -136,5 +176,8 @@ HTTP/2 needs the `http2` extra.
 
 - Annotation defaults (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`)
   in the 2026-07-28 [schema](https://modelcontextprotocol.io/specification/2026-07-28/schema.md).
+- That @-mentioning the resource template in a live Claude Code session offers version and
+  symbol completions. The e2e tests prove the server answers `completion/complete`, not that
+  Claude Code asks.
 - Claude Code CHANGELOG entries older than 2.1.323 about structured output, sampling,
   `maxResultSizeChars`, resource templates or completions.
