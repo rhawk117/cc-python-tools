@@ -9,6 +9,8 @@ class TestDocsSite:
     path = '/page.html'
     body = b'0123456789' * 100
     url = f'https://docs.python.org{path}'
+    bound_seconds = 5
+    settle_seconds = 0.05
 
     @pytest.fixture
     def plain_site(self) -> DocsSite:
@@ -16,7 +18,7 @@ class TestDocsSite:
 
     @pytest.fixture
     def held_site(self) -> DocsSite:
-        return DocsSite(pages={self.path: self.body}, held=frozenset({self.path}))
+        return DocsSite(pages={self.path: self.body}, held=self.path)
 
     async def download(self, site: DocsSite) -> bytes:
         async with httpx2.AsyncClient(transport=site.transport()) as client:
@@ -36,9 +38,9 @@ class TestDocsSite:
 
         async with anyio.create_task_group() as tasks:
             tasks.start_soon(run_download)
-            with anyio.fail_after(5):
-                await held_site.wait_until_held()
-            await anyio.sleep(0.05)
+            with anyio.fail_after(self.bound_seconds):
+                await held_site.wait_until_hold_engaged()
+            await anyio.sleep(self.settle_seconds)
             assert received == []
             held_site.release()
         assert received == [self.body]

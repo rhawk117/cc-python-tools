@@ -21,19 +21,19 @@ class DocsSite:
     unsized: AbstractSet[str] = frozenset()
     redirects: Mapping[str, str] = field(default_factory=dict)
     requested_urls: list[httpx2.URL] = field(default_factory=list)
-    held: AbstractSet[str] = frozenset()
-    first_part_sent: anyio.Event = field(default_factory=anyio.Event)
+    held: str | None = None
+    hold_engaged: anyio.Event = field(default_factory=anyio.Event)
     released: anyio.Event = field(default_factory=anyio.Event)
 
     async def held_body(self, body: bytes) -> AsyncIterator[bytes]:
         middle = len(body) // 2
         yield body[:middle]
-        self.first_part_sent.set()
+        self.hold_engaged.set()
         await self.released.wait()
         yield body[middle:]
 
-    async def wait_until_held(self) -> None:
-        await self.first_part_sent.wait()
+    async def wait_until_hold_engaged(self) -> None:
+        await self.hold_engaged.wait()
 
     def release(self) -> None:
         self.released.set()
@@ -46,7 +46,7 @@ class DocsSite:
         body = self.pages.get(request.url.path)
         if body is None:
             return httpx2.Response(httpx2.codes.NOT_FOUND)
-        if request.url.path in self.held:
+        if request.url.path == self.held:
             return httpx2.Response(httpx2.codes.OK, content=self.held_body(body))
         if request.url.path in self.unsized:
             return httpx2.Response(httpx2.codes.OK, content=streamed(body))

@@ -156,7 +156,7 @@ class TestConcurrentProgress:
 
     @pytest.fixture
     async def held(self) -> AsyncGenerator[SharedService]:
-        site = DocsSite(pages=standard_pages(), held=frozenset({INVENTORY_PATH}))
+        site = DocsSite(pages=standard_pages(), held=INVENTORY_PATH)
         async with open_shared_service(site) as held:
             yield held
 
@@ -213,7 +213,7 @@ class TestConcurrentProgress:
         with anyio.fail_after(self.bound_seconds):
             async with anyio.create_task_group() as clients:
                 clients.start_soon(self.search_until_cancelled, held.server, ProgressLog(), starter)
-                await held.site.wait_until_held()
+                await held.site.wait_until_hold_engaged()
                 clients.start_soon(self.search_with_progress, held.server, waiting_log, results)
                 await self.wait_for_watchers(held.service)
                 starter.cancel()
