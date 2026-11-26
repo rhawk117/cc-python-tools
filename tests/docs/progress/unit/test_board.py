@@ -1,4 +1,5 @@
 import logging
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 
 import anyio
@@ -26,6 +27,18 @@ class RaisingWatcher:
         raise self.failure
 
 
+@dataclass(slots=True, kw_only=True)
+class LeavingWatcher:
+    failure: BaseException
+    scope: ExitStack = field(default_factory=ExitStack)
+    attempts: list[tuple[int, int | None]] = field(default_factory=list)
+
+    async def report(self, read: int, total: int | None) -> None:
+        self.attempts.append((read, total))
+        self.scope.close()
+        raise self.failure
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class BoardHarness:
     board: ProgressBoard
@@ -33,6 +46,7 @@ class BoardHarness:
     recorder: RecordingWatcher
     failing: RaisingWatcher
     cancelled: RaisingWatcher
+    leaving: LeavingWatcher
 
 
 class TestProgressBoard:
@@ -46,6 +60,7 @@ class TestProgressBoard:
             recorder=RecordingWatcher(),
             failing=RaisingWatcher(failure=RuntimeError('dead watcher')),
             cancelled=RaisingWatcher(failure=anyio.get_cancelled_exc_class()()),
+            leaving=LeavingWatcher(failure=RuntimeError('left before failing')),
         )
 
     async def test_failing_watcher_does_not_starve_the_others(
@@ -87,6 +102,33 @@ class TestProgressBoard:
             await harness.board.publish(harness.version, 2, 10)
 
         assert harness.failing.attempts == [(1, 10), (2, 10)]
+
+    async def test_failed_watcher_is_forgotten_when_it_exits_beside_another_watcher(
+        self,
+        harness: BoardHarness,
+    ) -> None:
+        with harness.board.watch(harness.version, harness.recorder):
+            with harness.board.watch(harness.version, harness.failing):
+                await harness.board.publish(harness.version, 1, 10)
+            with harness.board.watch(harness.version, harness.failing):
+                await harness.board.publish(harness.version, 2, 10)
+
+        assert harness.failing.attempts == [(1, 10), (2, 10)]
+
+    async def test_watcher_failing_after_its_watch_exited_leaves_no_failure_record(
+        self,
+        harness: BoardHarness,
+    ) -> None:
+        with harness.board.watch(harness.version, harness.recorder):
+            harness.leaving.scope.enter_context(
+                harness.board.watch(harness.version, harness.leaving),
+            )
+            await harness.board.publish(harness.version, 1, 10)
+            with harness.board.watch(harness.version, harness.leaving):
+                await harness.board.publish(harness.version, 2, 10)
+
+        assert harness.leaving.attempts == [(1, 10), (2, 10)]
+        assert harness.recorder.reports == [(1, 10), (2, 10)]
 
     async def test_cancellation_reaches_the_publisher(self, harness: BoardHarness) -> None:
         with (

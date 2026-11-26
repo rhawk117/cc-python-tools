@@ -52,7 +52,8 @@ class ProgressBoard:
             try:
                 await reporter.report(read, total)
             except Exception:
-                self.failed.setdefault(version, set()).add(id(reporter))
+                if any(watched is reporter for watched in self.watchers.get(version, ())):
+                    self.failed.setdefault(version, set()).add(id(reporter))
                 logger.warning('progress watcher failed for %s', version, exc_info=True)
 
 
