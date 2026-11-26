@@ -2,13 +2,14 @@
 
 import hashlib
 import tempfile
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable, Generator, Mapping
 
     from python_agent_tools_docs.domain import PythonVersion
 
@@ -26,7 +27,7 @@ class InventoryStore(Protocol):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class MemoryInventoryStore:
+class NullInventoryStore:
     def read(self, version: PythonVersion) -> bytes | None: ...
 
     def write(self, version: PythonVersion, content: bytes) -> None: ...
@@ -71,14 +72,26 @@ def read_entry(paths: EntryPaths) -> StoredEntry | None:
             digest=paths.digest.read_bytes(),
             modified=paths.data.stat().st_mtime,
         )
-    except FileNotFoundError:
+    except OSError:
         return None
+
+
+@contextmanager
+def removed_on_error(path: Path) -> Generator[None]:
+    try:
+        yield
+    except OSError:
+        path.unlink(missing_ok=True)
+        raise
 
 
 def replace_atomically(target: Path, content: bytes) -> None:
     with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as handle:
-        handle.write(content)
-    Path(handle.name).replace(target)
+        temporary = Path(handle.name)
+        with removed_on_error(temporary):
+            handle.write(content)
+    with removed_on_error(temporary):
+        temporary.replace(target)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -102,7 +115,8 @@ class DiskInventoryStore:
         if self.is_fresh(entry) and digest_of(entry.content) == entry.digest:
             return entry.content
 
-        paths.remove()
+        with suppress(OSError):
+            paths.remove()
         return None
 
     def write(self, version: PythonVersion, content: bytes) -> None:
@@ -110,9 +124,10 @@ class DiskInventoryStore:
         if paths is None:
             return
 
-        self.root.mkdir(parents=True, exist_ok=True)
-        replace_atomically(paths.digest, digest_of(content))
-        replace_atomically(paths.data, content)
+        with suppress(OSError):
+            self.root.mkdir(parents=True, exist_ok=True)
+            replace_atomically(paths.digest, digest_of(content))
+            replace_atomically(paths.data, content)
 
     def contains(self, version: PythonVersion) -> bool:
         return self.read(version) is not None
@@ -125,7 +140,7 @@ def create_inventory_store(
 ) -> InventoryStore:
     data_directory = environment.get(DATA_DIRECTORY_VARIABLE, '')
     if not data_directory:
-        return MemoryInventoryStore()
+        return NullInventoryStore()
 
     root = Path(data_directory).joinpath(CACHE_DIRECTORY).resolve()
     return DiskInventoryStore(root=root, ttl_seconds=ttl_seconds, clock=clock)

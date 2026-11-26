@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import httpx2
+    from python_agent_tools_docs.domain import PythonVersion
 
 READ_TOOL = 'read_python_docs'
 TEMPLATE = ResourceTemplateReference(uri=RESOURCE_URI)
@@ -147,3 +149,26 @@ class TestSymbolCompletions:
         ):
             values = await complete(client, 'symbol', 'os.path.j', {'version': DOCS_VERSION})
         assert (values, cold_site.requested_urls) == (['os.path.join'], [])
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExpiredEntryStore:
+    def read(self, version: PythonVersion) -> bytes | None: ...
+
+    def write(self, version: PythonVersion, content: bytes) -> None: ...
+
+    def contains(self, version: PythonVersion) -> bool:
+        return version.text == DOCS_VERSION
+
+
+class TestExpiredEntryRace:
+    async def test_an_entry_that_expires_after_the_presence_check_starts_no_fetch(
+        self, site: DocsSite
+    ) -> None:
+        options = ServiceOptions(transport=site.transport(), store=ExpiredEntryStore())
+        async with (
+            open_documentation_service(Settings(), options) as service,
+            Client(build_server(service, {})) as client,
+        ):
+            values = await complete(client, 'symbol', 'os', {'version': DOCS_VERSION})
+        assert (values, site.requested_urls) == ([], [])

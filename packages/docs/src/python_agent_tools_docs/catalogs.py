@@ -1,6 +1,6 @@
 """The catalog and section lookups the documentation tools depend on."""
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from python_agent_tools_docs.domain import PythonVersion, Symbol
@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from python_agent_tools_docs.settings import Settings
 
 
+@runtime_checkable
 class DocumentationCatalogs(Protocol):
     @property
     def settings(self) -> Settings: ...

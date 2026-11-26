@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import anyio
 import httpx2
 
 from python_agent_tools_docs.domain import DocumentationUrl, create_documentation_url
@@ -14,19 +13,15 @@ from python_agent_tools_docs.errors import (
     UpstreamStatusError,
     VersionNotPublishedError,
 )
-from python_agent_tools_docs.extraction import extract_markdown
-from python_agent_tools_docs.inventory import parse_inventory
-from python_agent_tools_docs.matching import catalog_symbols
 from python_agent_tools_docs.progress import SilentReporter, VersionProgress
 
 if TYPE_CHECKING:
-    from python_agent_tools_docs.disk_cache import InventoryStore
+    import anyio
+
     from python_agent_tools_docs.domain import PythonVersion
     from python_agent_tools_docs.errors import DocumentationError
-    from python_agent_tools_docs.matching import SymbolCatalog
     from python_agent_tools_docs.progress import ProgressBoard, ProgressReporter
     from python_agent_tools_docs.settings import Settings
-    from python_agent_tools_docs.store import CachedLoader
 
 
 def documentation_http_client(
@@ -80,17 +75,11 @@ async def bounded_body(
     return bytes(content)
 
 
-def build_catalog(content: bytes, version: PythonVersion, settings: Settings) -> SymbolCatalog:
-    return catalog_symbols(parse_inventory(content, version, settings))
-
-
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
 class DocumentationSource:
     client: httpx2.AsyncClient
     downloads: anyio.CapacityLimiter
-    parsers: anyio.CapacityLimiter
     settings: Settings
-    store: InventoryStore
     board: ProgressBoard
 
     async def fetch(self, url: DocumentationUrl) -> bytes:
@@ -117,27 +106,3 @@ class DocumentationSource:
             return await self.fetch_reporting(inventory_url(version), progress)
         except PageNotFoundError as error:
             raise VersionNotPublishedError(version.text) from error
-
-    async def inventory(self, version: PythonVersion) -> bytes:
-        if (stored := await anyio.to_thread.run_sync(self.store.read, version)) is not None:
-            return stored
-
-        content = await self.fetch_inventory(version)
-        await anyio.to_thread.run_sync(self.store.write, version, content)
-        return content
-
-    async def catalog(self, version: PythonVersion) -> SymbolCatalog:
-        content = await self.inventory(version)
-        return await anyio.to_thread.run_sync(
-            build_catalog, content, version, self.settings, limiter=self.parsers
-        )
-
-
-@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
-class SectionLoader:
-    pages: CachedLoader[DocumentationUrl, bytes]
-    parsers: anyio.CapacityLimiter
-
-    async def load(self, url: DocumentationUrl) -> str:
-        content = await self.pages.get(url.page_url)
-        return await anyio.to_thread.run_sync(extract_markdown, content, url, limiter=self.parsers)

@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING
 import anyio
 
 from python_agent_tools_docs.errors import CallDeadlineExceededError
+from python_agent_tools_docs.extraction import extract_markdown
+from python_agent_tools_docs.inventory import parse_inventory
+from python_agent_tools_docs.matching import catalog_symbols
 from python_agent_tools_docs.progress import SilentReporter
 
 if TYPE_CHECKING:
@@ -16,6 +19,7 @@ if TYPE_CHECKING:
     from python_agent_tools_docs.domain import DocumentationUrl, PythonVersion, Symbol
     from python_agent_tools_docs.matching import SymbolCatalog
     from python_agent_tools_docs.progress import ProgressBoard, ProgressReporter
+    from python_agent_tools_docs.repository import DocumentationSource
     from python_agent_tools_docs.settings import Settings
     from python_agent_tools_docs.store import CachedLoader
 
@@ -29,12 +33,50 @@ def call_deadline(seconds: float) -> Generator[None]:
         raise CallDeadlineExceededError(seconds) from error
 
 
+def build_catalog(content: bytes, version: PythonVersion, settings: Settings) -> SymbolCatalog:
+    return catalog_symbols(parse_inventory(content, version, settings))
+
+
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class CatalogLoader:
+    source: DocumentationSource
+    store: InventoryStore
+    parsers: anyio.CapacityLimiter
+    settings: Settings
+
+    async def inventory(self, version: PythonVersion) -> bytes:
+        if (stored := await anyio.to_thread.run_sync(self.store.read, version)) is not None:
+            return stored
+
+        content = await self.source.fetch_inventory(version)
+        await anyio.to_thread.run_sync(self.store.write, version, content)
+        return content
+
+    async def parse(self, content: bytes, version: PythonVersion) -> SymbolCatalog:
+        return await anyio.to_thread.run_sync(
+            build_catalog, content, version, self.settings, limiter=self.parsers
+        )
+
+    async def catalog(self, version: PythonVersion) -> SymbolCatalog:
+        return await self.parse(await self.inventory(version), version)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class SectionLoader:
+    pages: CachedLoader[DocumentationUrl, bytes]
+    parsers: anyio.CapacityLimiter
+
+    async def load(self, url: DocumentationUrl) -> str:
+        content = await self.pages.get(url.page_url)
+        return await anyio.to_thread.run_sync(extract_markdown, content, url, limiter=self.parsers)
+
+
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
 class DocumentationService:
     catalogs: CachedLoader[PythonVersion, SymbolCatalog]
     sections: CachedLoader[DocumentationUrl, str]
     settings: Settings
-    store: InventoryStore
+    loader: CatalogLoader
     board: ProgressBoard
     reporter: ProgressReporter = field(default_factory=SilentReporter)
 
@@ -49,10 +91,11 @@ class DocumentationService:
         if (catalog := self.catalogs.peek(version)) is not None:
             return catalog
 
-        if not await anyio.to_thread.run_sync(self.store.contains, version):
+        stored = await anyio.to_thread.run_sync(self.loader.store.read, version)
+        if stored is None:
             return None
 
-        return await self.catalogs.get(version)
+        return await self.loader.parse(stored, version)
 
     async def section(self, symbol: Symbol) -> str:
         return await self.sections.get(symbol.source_url)

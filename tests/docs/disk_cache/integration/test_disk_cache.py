@@ -1,23 +1,29 @@
+import stat
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from mcp import Client
 from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.disk_cache import (
+    CACHE_DIRECTORY,
     DATA_DIRECTORY_VARIABLE,
     create_inventory_store,
 )
 from python_agent_tools_docs.domain import PythonVersion, create_python_version
+from python_agent_tools_docs.server import build_server
 from python_agent_tools_docs.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from python_agent_tools_docs.disk_cache import InventoryStore
 
+SUFFIXES = {'.inv', '.sha256'}
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
 
 
@@ -100,6 +106,60 @@ class TestInventoryStore:
         assert store.read(self.version) is None
         assert not store.contains(self.version)
         assert list(tmp_path.iterdir()) == []
+
+
+class TestUnusableDataDirectory:
+    version = make_version(DOCS_VERSION)
+    content = b'inventory bytes'
+
+    @pytest.fixture
+    def read_only_root(self, tmp_path: Path) -> Iterator[Path]:
+        root = tmp_path.joinpath('plugin-data')
+        root.mkdir()
+        root.chmod(stat.S_IRUSR | stat.S_IXUSR)
+        yield root
+        root.chmod(stat.S_IRWXU)
+
+    def store_for(self, root: Path) -> InventoryStore:
+        return create_inventory_store({DATA_DIRECTORY_VARIABLE: str(root)}, 60.0)
+
+    def test_a_read_only_directory_swallows_the_write_and_reads_a_miss(
+        self, read_only_root: Path
+    ) -> None:
+        store = self.store_for(read_only_root)
+        store.write(self.version, self.content)
+        assert store.read(self.version) is None
+        assert list(read_only_root.rglob('*')) == []
+
+    def test_a_failed_replace_leaves_no_temporary_file(self, tmp_path: Path) -> None:
+        store = self.store_for(tmp_path)
+        cache_directory = tmp_path.joinpath(CACHE_DIRECTORY)
+        cache_directory.joinpath(f'{DOCS_VERSION}.inv').mkdir(parents=True)
+        store.write(self.version, self.content)
+        leftovers = [path for path in cache_directory.iterdir() if path.suffix not in SUFFIXES]
+        assert leftovers == []
+
+    def test_an_unreadable_entry_is_a_miss(self, tmp_path: Path) -> None:
+        store = self.store_for(tmp_path)
+        cache_directory = tmp_path.joinpath(CACHE_DIRECTORY)
+        cache_directory.joinpath(f'{DOCS_VERSION}.inv').mkdir(parents=True)
+        assert store.read(self.version) is None
+
+    async def test_a_search_still_returns_matches_from_the_network(
+        self, read_only_root: Path
+    ) -> None:
+        site = DocsSite(pages=standard_pages())
+        store = self.store_for(read_only_root)
+        options = ServiceOptions(transport=site.transport(), store=store)
+        async with (
+            open_documentation_service(Settings(), options) as service,
+            Client(build_server(service, {})) as client,
+        ):
+            result = await client.call_tool(
+                'search_python_docs', {'version': DOCS_VERSION, 'query': 'os.path.join'}
+            )
+        assert not result.is_error
+        assert site.request_count(INVENTORY_PATH) == 1
 
 
 class TestRestartedServer:

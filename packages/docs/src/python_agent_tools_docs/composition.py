@@ -8,14 +8,10 @@ from typing import TYPE_CHECKING
 import anyio
 from cachetools import TTLCache
 
-from python_agent_tools_docs.disk_cache import MemoryInventoryStore
+from python_agent_tools_docs.disk_cache import NullInventoryStore
 from python_agent_tools_docs.progress import ProgressBoard
-from python_agent_tools_docs.repository import (
-    DocumentationSource,
-    SectionLoader,
-    documentation_http_client,
-)
-from python_agent_tools_docs.services import DocumentationService
+from python_agent_tools_docs.repository import DocumentationSource, documentation_http_client
+from python_agent_tools_docs.services import CatalogLoader, DocumentationService, SectionLoader
 from python_agent_tools_docs.store import CachedLoader
 
 if TYPE_CHECKING:
@@ -91,9 +87,7 @@ def documentation_source(
     return DocumentationSource(
         client=client,
         downloads=anyio.CapacityLimiter(settings.download_concurrency),
-        parsers=anyio.CapacityLimiter(settings.parse_concurrency),
         settings=settings,
-        store=environment.store,
         board=board,
     )
 
@@ -104,12 +98,16 @@ def compose_service(
     board = ProgressBoard()
     source = documentation_source(client, environment, board)
     pages = cached_loader(source.fetch, page_cache(environment), environment)
-    sections = SectionLoader(pages=pages, parsers=source.parsers)
+    parsers = anyio.CapacityLimiter(environment.settings.parse_concurrency)
+    loader = CatalogLoader(
+        source=source, store=environment.store, parsers=parsers, settings=environment.settings
+    )
+    sections = SectionLoader(pages=pages, parsers=parsers)
     return DocumentationService(
-        catalogs=cached_loader(source.catalog, catalog_cache(environment), environment),
+        catalogs=cached_loader(loader.catalog, catalog_cache(environment), environment),
         sections=cached_loader(sections.load, section_cache(environment), environment),
         settings=environment.settings,
-        store=environment.store,
+        loader=loader,
         board=board,
     )
 
@@ -118,7 +116,7 @@ def compose_service(
 class ServiceOptions:
     transport: httpx2.AsyncBaseTransport | None = None
     timer: Callable[[], float] = monotonic
-    store: InventoryStore = field(default_factory=MemoryInventoryStore)
+    store: InventoryStore = field(default_factory=NullInventoryStore)
 
 
 @asynccontextmanager

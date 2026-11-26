@@ -3,7 +3,6 @@ from dataclasses import dataclass
 import anyio
 import httpx2
 import pytest
-from python_agent_tools_docs.disk_cache import MemoryInventoryStore
 from python_agent_tools_docs.domain import (
     DocumentationUrl,
     PythonVersion,
@@ -54,9 +53,7 @@ def create_source(client: httpx2.AsyncClient, settings: Settings) -> Documentati
     return DocumentationSource(
         client=client,
         downloads=anyio.CapacityLimiter(settings.download_concurrency),
-        parsers=anyio.CapacityLimiter(settings.parse_concurrency),
         settings=settings,
-        store=MemoryInventoryStore(),
         board=ProgressBoard(),
     )
 
@@ -118,24 +115,23 @@ class TestFetch:
             await source.fetch(self.page_url)
 
 
-class TestCatalog:
+class TestFetchInventory:
     version = make_version(DOCS_VERSION)
 
-    async def test_catalog_holds_the_version_symbols(self) -> None:
-        settings = Settings()
-        harness = create_harness(DocsSite(pages=standard_pages()), settings)
-        catalog = await harness.source.catalog(self.version)
-        assert 'os.path.join' in catalog.index.symbols
+    async def test_the_inventory_bytes_are_fetched(self) -> None:
+        harness = create_harness(DocsSite(pages=standard_pages()), Settings())
+        content = await harness.source.fetch_inventory(self.version)
+        assert content == standard_pages()[f'/{DOCS_VERSION}/objects.inv']
         assert harness.site.request_count(f'/{DOCS_VERSION}/objects.inv') == 1
 
     async def test_unpublished_version_is_named(self) -> None:
         harness = create_harness(DocsSite(pages={}), Settings())
         with pytest.raises(VersionNotPublishedError, match=DOCS_VERSION):
-            await harness.source.catalog(self.version)
+            await harness.source.fetch_inventory(self.version)
 
 
-class TestLimiters:
-    def test_limiters_are_sized_by_settings(self) -> None:
-        settings = Settings(download_concurrency=2, parse_concurrency=3)
+class TestLimiter:
+    def test_the_download_limiter_is_sized_by_settings(self) -> None:
+        settings = Settings(download_concurrency=2)
         source = create_source(documentation_http_client(settings), settings)
-        assert (source.downloads.total_tokens, source.parsers.total_tokens) == (2, 3)
+        assert source.downloads.total_tokens == 2
