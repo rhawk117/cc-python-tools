@@ -1,13 +1,14 @@
 """The documentation service the tools use, and the factory that composes it."""
 
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from time import monotonic
 from typing import TYPE_CHECKING
 
 import anyio
 from cachetools import TTLCache
 
+from python_agent_tools_docs.disk_cache import MemoryInventoryStore
 from python_agent_tools_docs.errors import CallDeadlineExceededError
 from python_agent_tools_docs.repository import (
     DocumentationSource,
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     import httpx2
     from anyio.abc import TaskGroup
 
+    from python_agent_tools_docs.disk_cache import InventoryStore
     from python_agent_tools_docs.domain import DocumentationUrl, PythonVersion, Symbol
     from python_agent_tools_docs.matching import SymbolCatalog
     from python_agent_tools_docs.settings import Settings
@@ -53,6 +55,7 @@ class DocumentationService:
 class LoaderEnvironment:
     fills: TaskGroup
     settings: Settings
+    store: InventoryStore
     timer: Callable[[], float]
 
 
@@ -85,6 +88,7 @@ def compose_service(
         downloads=anyio.CapacityLimiter(settings.download_concurrency),
         parsers=parsers,
         settings=settings,
+        store=environment.store,
     )
     ttl = settings.cache_ttl_seconds
     timer = environment.timer
@@ -107,16 +111,34 @@ def compose_service(
     )
 
 
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class ServiceOptions:
+    transport: httpx2.AsyncBaseTransport | None = None
+    timer: Callable[[], float] = monotonic
+    store: InventoryStore = field(default_factory=MemoryInventoryStore)
+
+
+@asynccontextmanager
+async def open_documentation_service(
+    settings: Settings, options: ServiceOptions
+) -> AsyncGenerator[DocumentationService]:
+    async with (
+        documentation_http_client(settings, options.transport) as client,
+        anyio.create_task_group() as fills,
+    ):
+        environment = LoaderEnvironment(
+            fills=fills, settings=settings, store=options.store, timer=options.timer
+        )
+        yield compose_service(client, environment)
+        fills.cancel_scope.cancel()
+
+
 @asynccontextmanager
 async def build_documentation_service(
     settings: Settings,
     transport: httpx2.AsyncBaseTransport | None = None,
     timer: Callable[[], float] = monotonic,
 ) -> AsyncGenerator[DocumentationService]:
-    async with (
-        documentation_http_client(settings, transport) as client,
-        anyio.create_task_group() as fills,
-    ):
-        environment = LoaderEnvironment(fills=fills, settings=settings, timer=timer)
-        yield compose_service(client, environment)
-        fills.cancel_scope.cancel()
+    options = ServiceOptions(transport=transport, timer=timer)
+    async with open_documentation_service(settings, options) as service:
+        yield service

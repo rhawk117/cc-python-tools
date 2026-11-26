@@ -12,11 +12,16 @@ from pydantic import Field
 
 from python_agent_tools_docs import read_python_docs as read_use_case
 from python_agent_tools_docs import search_python_docs as search_use_case
+from python_agent_tools_docs.disk_cache import create_inventory_store
 from python_agent_tools_docs.errors import DocumentationToolsError, VersionRequiredError
 from python_agent_tools_docs.project import resolve_floor
 from python_agent_tools_docs.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
 from python_agent_tools_docs.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
-from python_agent_tools_docs.services import build_documentation_service, call_deadline
+from python_agent_tools_docs.services import (
+    ServiceOptions,
+    call_deadline,
+    open_documentation_service,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping
@@ -118,5 +123,6 @@ def build_server(service: DocumentationService, environment: Mapping[str, str]) 
 
 
 async def serve(settings: Settings) -> None:
-    async with build_documentation_service(settings) as service:
+    store = create_inventory_store(os.environ, settings.cache_ttl_seconds)
+    async with open_documentation_service(settings, ServiceOptions(store=store)) as service:
         await build_server(service, os.environ).run_stdio_async()

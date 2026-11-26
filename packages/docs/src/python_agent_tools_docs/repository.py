@@ -1,11 +1,12 @@
 """Bounded HTTP retrieval of official pages and inventories, with failures translated."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import anyio
 import httpx2
 
+from python_agent_tools_docs.disk_cache import MemoryInventoryStore
 from python_agent_tools_docs.domain import DocumentationUrl, create_documentation_url
 from python_agent_tools_docs.errors import (
     DownloadTooLargeError,
@@ -19,6 +20,7 @@ from python_agent_tools_docs.inventory import parse_inventory
 from python_agent_tools_docs.matching import catalog_symbols
 
 if TYPE_CHECKING:
+    from python_agent_tools_docs.disk_cache import InventoryStore
     from python_agent_tools_docs.domain import PythonVersion
     from python_agent_tools_docs.errors import DocumentationError
     from python_agent_tools_docs.matching import SymbolCatalog
@@ -78,6 +80,7 @@ class DocumentationSource:
     downloads: anyio.CapacityLimiter
     parsers: anyio.CapacityLimiter
     settings: Settings
+    store: InventoryStore = field(default_factory=MemoryInventoryStore)
 
     async def fetch(self, url: DocumentationUrl) -> bytes:
         try:
@@ -94,11 +97,22 @@ class DocumentationSource:
                 raise failure
             return await bounded_body(response, self.settings)
 
-    async def catalog(self, version: PythonVersion) -> SymbolCatalog:
+    async def fetch_inventory(self, version: PythonVersion) -> bytes:
         try:
-            content = await self.fetch(inventory_url(version))
+            return await self.fetch(inventory_url(version))
         except PageNotFoundError as error:
             raise VersionNotPublishedError(version.text) from error
+
+    async def inventory(self, version: PythonVersion) -> bytes:
+        if (stored := await anyio.to_thread.run_sync(self.store.read, version)) is not None:
+            return stored
+
+        content = await self.fetch_inventory(version)
+        await anyio.to_thread.run_sync(self.store.write, version, content)
+        return content
+
+    async def catalog(self, version: PythonVersion) -> SymbolCatalog:
+        content = await self.inventory(version)
         return await anyio.to_thread.run_sync(
             build_catalog, content, version, self.settings, limiter=self.parsers
         )
