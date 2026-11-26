@@ -1,25 +1,31 @@
 """Build the caches, loaders and documentation service from settings and a client."""
 
+from contextlib import ExitStack
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import anyio
 from cachetools import TTLCache
+from python_agent_tools_core.exception import PythonAgentToolsError
 
 from python_docs_mcp.adapters.progress import ProgressBoard
 from python_docs_mcp.services.documentation_service import (
     CatalogLoader,
     DocumentationService,
     SectionLoader,
+    call_deadline,
 )
 from python_docs_mcp.stores.repository import DocumentationSource
 from python_docs_mcp.stores.store import CachedLoader
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Hashable
+    from collections.abc import Awaitable, Callable, Hashable, Mapping
+    from contextlib import AbstractContextManager
+    from types import TracebackType
 
     import httpx2
     from anyio.abc import TaskGroup
+    from mcp.server.mcpserver.exceptions import MCPServerError
     from python_agent_tools_core.version import PythonVersion
 
     from python_docs_mcp.core.interfaces import ClockInterface
@@ -115,3 +121,36 @@ def compose_service(
         loader=loader,
         board=board,
     )
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ErrorTranslator:
+    raises: type[MCPServerError]
+
+    def __enter__(self) -> None:
+        return None
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        if isinstance(exc, PythonAgentToolsError):
+            raise self.raises(str(exc)) from exc
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MCPCallStack:
+    translator: AbstractContextManager[None]
+    deadline_seconds: float
+    environment: Mapping[str, str]
+
+    def create_callstack(self, *extra_caller_handlers: AbstractContextManager[None]) -> ExitStack:
+        stack = ExitStack()
+        stack.enter_context(self.translator)
+        stack.enter_context(call_deadline(self.deadline_seconds))
+        for handler in extra_caller_handlers:
+            stack.enter_context(handler)
+
+        return stack

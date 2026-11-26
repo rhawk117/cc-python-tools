@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -6,16 +5,16 @@ import pytest
 from mcp import Client
 from mcp.shared.exceptions import MCPError
 from mcp.types import (
+    CompletionArgument,
     PromptReference,
     ResourceTemplateReference,
     TextContent,
     TextResourceContents,
 )
 from python_agent_tools_core.project import PROJECT_ROOT_VARIABLE
-from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
-from python_docs_mcp.schemas.settings import Settings
-from python_docs_mcp.server import build_server
-from python_docs_mcp.services.completions import RESOURCE_URI
+from python_docs_mcp.app import complete_documentation
+from python_docs_mcp.lifespan import ServiceOptions
+from python_docs_mcp.services.completions import RESOURCE_URI, ServiceUnavailableError
 from python_docs_mcp.stores.disk_cache import DATA_DIRECTORY_VARIABLE, create_inventory_store
 
 from tests.docs.support.docs_site import DocsSite
@@ -27,25 +26,15 @@ from tests.docs.support.samples import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Mapping
+    from collections.abc import AsyncGenerator
     from pathlib import Path
 
-    import httpx2
     from python_agent_tools_core.version import PythonVersion
+
+    from tests.docs.conftest import ServerHarness
 
 READ_TOOL = 'read_python_docs'
 TEMPLATE = ResourceTemplateReference(uri=RESOURCE_URI)
-
-
-@asynccontextmanager
-async def open_client(
-    transport: httpx2.AsyncBaseTransport, environment: Mapping[str, str] | None = None
-) -> AsyncGenerator[Client]:
-    async with (
-        open_documentation_service(Settings(), ServiceOptions(transport=transport)) as service,
-        Client(build_server(service, environment or {})) as client,
-    ):
-        yield client
 
 
 async def complete(client: Client, name: str, value: str, resolved: dict[str, str]) -> list[str]:
@@ -59,17 +48,23 @@ def site() -> DocsSite:
 
 
 @pytest.fixture
-async def client(site: DocsSite) -> AsyncGenerator[Client]:
-    async with open_client(site.transport()) as client:
+async def client(harness: ServerHarness, site: DocsSite) -> AsyncGenerator[Client]:
+    async with harness.connect(options=ServiceOptions(transport=site.transport())) as client:
+        assert isinstance(client, Client)
         yield client
 
 
 @pytest.fixture
-async def floor_client(site: DocsSite, tmp_path: Path) -> AsyncGenerator[Client]:
+async def floor_client(
+    harness: ServerHarness, site: DocsSite, tmp_path: Path
+) -> AsyncGenerator[Client]:
     tmp_path.joinpath('pyproject.toml').write_text(
         '[project]\nrequires-python = ">=3.12"\n', encoding='utf-8'
     )
-    async with open_client(site.transport(), {PROJECT_ROOT_VARIABLE: str(tmp_path)}) as client:
+    options = ServiceOptions(transport=site.transport())
+    environment = {PROJECT_ROOT_VARIABLE: str(tmp_path)}
+    async with harness.connect(options=options, environment=environment) as client:
+        assert isinstance(client, Client)
         yield client
 
 
@@ -136,22 +131,16 @@ class TestSymbolCompletions:
         assert await complete(client, 'symbol', 'os', {'version': '3.12'}) == []
 
     async def test_an_inventory_in_the_disk_store_is_used_without_the_network(
-        self, site: DocsSite, tmp_path: Path
+        self, harness: ServerHarness, site: DocsSite, tmp_path: Path
     ) -> None:
         store = create_inventory_store({DATA_DIRECTORY_VARIABLE: str(tmp_path)}, 3600)
         warm = ServiceOptions(transport=site.transport(), store=store)
-        async with (
-            open_documentation_service(Settings(), warm) as service,
-            Client(build_server(service, {})) as client,
-        ):
+        async with harness.connect(options=warm) as client:
             await client.read_resource(f'python-docs://{DOCS_VERSION}/os.path')
 
         cold_site = DocsSite(pages={})
         cold = ServiceOptions(transport=cold_site.transport(), store=store)
-        async with (
-            open_documentation_service(Settings(), cold) as service,
-            Client(build_server(service, {})) as client,
-        ):
+        async with harness.connect(options=cold) as client:
             values = await complete(client, 'symbol', 'os.path.j', {'version': DOCS_VERSION})
         assert (values, cold_site.requested_urls) == (['os.path.join'], [])
 
@@ -182,14 +171,11 @@ class TestCompletionCap:
     cap = 100
 
     async def test_more_matches_than_the_cap_return_the_cap_and_flag_more(
-        self, site: DocsSite
+        self, harness: ServerHarness, site: DocsSite
     ) -> None:
         store = BulkInventoryStore(symbol_count=self.symbol_count)
         options = ServiceOptions(transport=site.transport(), store=store)
-        async with (
-            open_documentation_service(Settings(), options) as service,
-            Client(build_server(service, {})) as client,
-        ):
+        async with harness.connect(options=options) as client:
             result = await client.complete(
                 TEMPLATE, {'name': 'symbol', 'value': 'bulk.'}, {'version': DOCS_VERSION}
             )
@@ -198,12 +184,16 @@ class TestCompletionCap:
 
 class TestExpiredEntryRace:
     async def test_an_expired_stored_entry_yields_no_values_and_no_request(
-        self, site: DocsSite
+        self, harness: ServerHarness, site: DocsSite
     ) -> None:
         options = ServiceOptions(transport=site.transport(), store=ExpiredEntryStore())
-        async with (
-            open_documentation_service(Settings(), options) as service,
-            Client(build_server(service, {})) as client,
-        ):
+        async with harness.connect(options=options) as client:
             values = await complete(client, 'symbol', 'os', {'version': DOCS_VERSION})
         assert (values, site.requested_urls) == ([], [])
+
+
+class TestCompletionWithoutService:
+    async def test_a_completion_with_no_service_attached_is_a_domain_error(self) -> None:
+        argument = CompletionArgument(name='symbol', value='os')
+        with pytest.raises(ServiceUnavailableError):
+            await complete_documentation(TEMPLATE, argument, None)

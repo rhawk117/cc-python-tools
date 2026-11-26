@@ -1,5 +1,4 @@
 import json
-from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 import anyio
@@ -8,18 +7,19 @@ import pytest
 from mcp import Client
 from mcp.types import TextContent
 from python_agent_tools_core.project import PROJECT_ROOT_VARIABLE
-from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
+from python_docs_mcp.lifespan import ServiceOptions
 from python_docs_mcp.schemas.settings import Settings
-from python_docs_mcp.server import build_server
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Mapping
+    from collections.abc import AsyncGenerator
     from pathlib import Path
 
     from mcp.types import CallToolResult
+
+    from tests.docs.conftest import ServerHarness
 
 SEARCH_TOOL = 'search_python_docs'
 READ_TOOL = 'read_python_docs'
@@ -30,19 +30,6 @@ async def stalled(request: httpx2.Request) -> httpx2.Response:
     return httpx2.Response(httpx2.codes.OK, request=request)
 
 
-@asynccontextmanager
-async def open_client(
-    settings: Settings,
-    transport: httpx2.AsyncBaseTransport,
-    environment: Mapping[str, str] | None = None,
-) -> AsyncGenerator[Client]:
-    async with (
-        open_documentation_service(settings, ServiceOptions(transport=transport)) as service,
-        Client(build_server(service, environment or {})) as client,
-    ):
-        yield client
-
-
 def first_text(result: CallToolResult) -> str:
     block = result.content[0]
     assert isinstance(block, TextContent)
@@ -50,27 +37,33 @@ def first_text(result: CallToolResult) -> str:
 
 
 @pytest.fixture
-async def client() -> AsyncGenerator[Client]:
+async def client(harness: ServerHarness) -> AsyncGenerator[Client]:
     site = DocsSite(pages=standard_pages())
-    async with open_client(Settings(), site.transport()) as client:
+    options = ServiceOptions(transport=site.transport())
+    async with harness.connect(options=options) as client:
+        assert isinstance(client, Client)
         yield client
 
 
 @pytest.fixture
-async def stalled_client() -> AsyncGenerator[Client]:
-    transport = httpx2.MockTransport(stalled)
-    async with open_client(Settings(call_timeout_seconds=0.05), transport) as client:
+async def stalled_client(harness: ServerHarness) -> AsyncGenerator[Client]:
+    options = ServiceOptions(transport=httpx2.MockTransport(stalled))
+    settings = Settings(call_timeout_seconds=0.05)
+    async with harness.connect(settings=settings, options=options) as client:
+        assert isinstance(client, Client)
         yield client
 
 
 @pytest.fixture
-async def floor_client(tmp_path: Path) -> AsyncGenerator[Client]:
+async def floor_client(harness: ServerHarness, tmp_path: Path) -> AsyncGenerator[Client]:
     tmp_path.joinpath('pyproject.toml').write_text(
         '[project]\nrequires-python = ">=3.13"\n', encoding='utf-8'
     )
     site = DocsSite(pages=standard_pages())
+    options = ServiceOptions(transport=site.transport())
     environment = {PROJECT_ROOT_VARIABLE: str(tmp_path)}
-    async with open_client(Settings(), site.transport(), environment) as client:
+    async with harness.connect(options=options, environment=environment) as client:
+        assert isinstance(client, Client)
         yield client
 
 

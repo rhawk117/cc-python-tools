@@ -5,11 +5,9 @@ from io import BytesIO
 from typing import TYPE_CHECKING
 
 import pytest
-from mcp import Client
 from python_agent_tools_core.version import PythonVersion, create_python_version
 from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
 from python_docs_mcp.schemas.settings import Settings
-from python_docs_mcp.server import build_server
 from python_docs_mcp.stores.disk_cache import (
     CACHE_DIRECTORY,
     DATA_DIRECTORY_VARIABLE,
@@ -25,6 +23,7 @@ if TYPE_CHECKING:
 
     from python_docs_mcp.stores.disk_cache import InventoryStore
 
+    from tests.docs.conftest import ServerHarness
     from tests.docs.support.clock import FakeClock
 
 SUFFIXES = {'.inv', '.sha256'}
@@ -200,15 +199,12 @@ class TestUnusableDataDirectory:
         assert store.read(self.version) is None
 
     async def test_a_search_still_returns_matches_from_the_network(
-        self, read_only_root: Path
+        self, harness: ServerHarness, read_only_root: Path
     ) -> None:
         site = DocsSite(pages=standard_pages())
         store = self.store_for(read_only_root)
         options = ServiceOptions(transport=site.transport(), store=store)
-        async with (
-            open_documentation_service(Settings(), options) as service,
-            Client(build_server(service, {})) as client,
-        ):
+        async with harness.connect(options=options) as client:
             result = await client.call_tool(
                 'search_python_docs', {'version': DOCS_VERSION, 'query': 'os.path.join'}
             )
