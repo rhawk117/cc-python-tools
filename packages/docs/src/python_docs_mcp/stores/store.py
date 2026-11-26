@@ -23,6 +23,14 @@ if TYPE_CHECKING:
     from python_docs_mcp.core.interfaces import Loader
 
 
+def clone_failure(error: Exception) -> Exception:
+    clone = type(error).__new__(type(error))
+    clone.args = error.args
+    clone.__dict__.update(error.__dict__)
+    clone.__cause__ = error
+    return clone
+
+
 @dataclass(frozen=True, slots=True)
 class FillSucceeded[V]:
     value: V
@@ -43,7 +51,7 @@ class PendingFill[V]:
             return self.outcome.value
 
         if isinstance(self.outcome, FillFailed):
-            raise self.outcome.error.with_traceback(None)
+            raise clone_failure(self.outcome.error)
 
         raise FillInterruptedError
 
@@ -64,7 +72,7 @@ class CachedLoader[K: Hashable, V]:
         if (value := self.values.get(key)) is not None:
             return value
         if (miss := self.misses.get(key)) is not None:
-            raise miss.with_traceback(None)
+            raise clone_failure(miss)
         pending = self.pending.get(key)
         if pending is None:
             pending = self.start_fill(key)

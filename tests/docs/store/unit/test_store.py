@@ -116,14 +116,21 @@ class TestCachedLoader:
         calls_inside = loader.calls
         clock.advance(301)
         await self.outcome(cache)
-        assert (inside, calls_inside, loader.calls) == ([failure, failure], 1, 2)
+        assert ([type(error) for error in inside], calls_inside, loader.calls) == (
+            [VersionNotPublishedError] * 2,
+            1,
+            2,
+        )
 
     async def test_a_transient_failure_is_retried(self, fills: TaskGroup, clock: FakeClock) -> None:
         failure = RetrievalFailedError('https://x')
         loader = RecordingLoader(failure=failure)
         cache = create_cache(loader, fills, clock)
         outcomes = [await self.outcome(cache), await self.outcome(cache)]
-        assert (outcomes, loader.calls) == ([failure, failure], 2)
+        assert ([type(error) for error in outcomes], loader.calls) == (
+            [RetrievalFailedError] * 2,
+            2,
+        )
 
     async def test_a_non_documentation_error_fails_only_its_own_key(
         self, fills: TaskGroup, clock: FakeClock
@@ -134,7 +141,7 @@ class TestCachedLoader:
         with pytest.raises(RuntimeError) as raised:
             await cache.get(KEY)
         loader.failure = None
-        assert (raised.value, await cache.get('other')) == (failure, 'value:other')
+        assert (raised.value.__cause__, await cache.get('other')) == (failure, 'value:other')
 
     async def test_an_oversized_value_is_served_but_not_cached(
         self, fills: TaskGroup, clock: FakeClock
@@ -150,3 +157,45 @@ class TestCachedLoader:
         cache = create_cache(RecordingLoader(delay_seconds=5), fills, clock)
         with pytest.raises(FillTimeoutError):
             await cache.get(KEY)
+
+
+class TestFailureIdentity:
+    async def failure(self, cache: CachedLoader[str, str]) -> DocumentationError:
+        try:
+            await cache.get(KEY)
+        except (RetrievalFailedError, VersionNotPublishedError) as error:
+            return error
+        raise AssertionError
+
+    async def test_waiters_on_a_failed_fill_receive_distinct_errors(
+        self, fills: TaskGroup, clock: FakeClock
+    ) -> None:
+        loader = RecordingLoader(delay_seconds=0.05, failure=RetrievalFailedError('https://x'))
+        cache = create_cache(loader, fills, clock)
+        errors: list[DocumentationError] = []
+
+        async def collect() -> None:
+            errors.append(await self.failure(cache))
+
+        async with anyio.create_task_group() as callers:
+            callers.start_soon(collect)
+            callers.start_soon(collect)
+        first, second = errors
+        assert (first is second, type(first), str(first)) == (
+            False,
+            type(second),
+            str(second),
+        )
+
+    async def test_calls_answered_from_the_misses_cache_receive_distinct_errors(
+        self, fills: TaskGroup, clock: FakeClock
+    ) -> None:
+        loader = RecordingLoader(failure=VersionNotPublishedError('3.99'))
+        cache = create_cache(loader, fills, clock)
+        await self.failure(cache)
+        first, second = await self.failure(cache), await self.failure(cache)
+        assert (first is second, type(first), str(first)) == (
+            False,
+            type(second),
+            str(second),
+        )
