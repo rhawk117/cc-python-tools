@@ -1,12 +1,14 @@
 """The python-docs-mcp server over stdio: Python standard-library documentation."""
 
 import os
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated
+from functools import wraps
+from typing import TYPE_CHECKING, Annotated, Concatenate, cast
 
 from mcp.server import mcpserver
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
+from mcp.server.mcpserver.resolve import Resolve
 from mcp.types import ToolAnnotations
 from pydantic import Field
 from python_agent_tools_core.exception import (
@@ -17,21 +19,26 @@ from python_agent_tools_core.exception import (
 from python_agent_tools_core.project import resolve_floor
 from python_agent_tools_core.version import create_python_version
 
-from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
+from python_docs_mcp.lifespan import (
+    SERVICE_STATE_KEY,
+    ServerLifespan,
+    ServiceOptions,
+    open_documentation_service,
+)
 from python_docs_mcp.schemas.base import VersionText
 from python_docs_mcp.services import read_python_docs as read_use_case
 from python_docs_mcp.services import search_python_docs as search_use_case
 from python_docs_mcp.services.completions import RESOURCE_URI, DocumentationCompletions
-from python_docs_mcp.services.documentation_service import call_deadline
+from python_docs_mcp.services.documentation_service import DocumentationService, call_deadline
 from python_docs_mcp.services.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
 from python_docs_mcp.services.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
 from python_docs_mcp.stores.disk_cache import create_inventory_store
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Mapping
+    from collections.abc import Awaitable, Callable, Generator, Mapping
+    from contextlib import AbstractContextManager
 
     from python_docs_mcp.schemas.settings import Settings
-    from python_docs_mcp.services.documentation_service import DocumentationService
 
 SERVER_NAME = 'python-docs-mcp'
 SERVER_INSTRUCTIONS = (
@@ -76,6 +83,36 @@ class ContextReporter:
         await self.context.report_progress(read, total)
 
 
+def resolve_tool_service(context: mcpserver.Context) -> DocumentationService:
+    state = context.request_context.lifespan_context
+    service = cast('DocumentationService', state[SERVICE_STATE_KEY])
+    return service.reporting_to(ContextReporter(context=context))
+
+
+ToolServiceDep = Annotated[DocumentationService, Resolve(resolve_tool_service)]
+
+
+def guarded[**P, R](
+    translate: Callable[[], AbstractContextManager[None]],
+) -> Callable[
+    [Callable[Concatenate[DocumentationTools, P], Awaitable[R]]],
+    Callable[Concatenate[DocumentationTools, P], Awaitable[R]],
+]:
+    def decorate(
+        handler: Callable[Concatenate[DocumentationTools, P], Awaitable[R]],
+    ) -> Callable[Concatenate[DocumentationTools, P], Awaitable[R]]:
+        @wraps(handler)
+        async def run(tools: DocumentationTools, /, *args: P.args, **kwargs: P.kwargs) -> R:
+            with ExitStack() as stack:
+                stack.enter_context(translate())
+                stack.enter_context(call_deadline(tools.service.settings.call_timeout_seconds))
+                return await handler(tools, *args, **kwargs)
+
+        return run
+
+    return decorate
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DocumentationTools:
     service: DocumentationService
@@ -91,24 +128,24 @@ class DocumentationTools:
 
         return floor.text
 
+    @guarded(tool_errors)
     async def search_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schema from these keyword parameters
         self,
         *,
         version: OptionalVersionText = None,
         query: search_use_case.SymbolQuery,
         limit: search_use_case.SearchLimit = DEFAULT_SEARCH_LIMIT,
-        context: mcpserver.Context,
+        service: ToolServiceDep,
     ) -> search_use_case.SearchResult:
         """Find official Python standard-library symbols by name for one Python version.
 
         Each match is labeled exact, prefix, or approximate; treat approximate matches
         as guesses and confirm them before relying on them.
         """
-        service = self.service.reporting_to(ContextReporter(context=context))
-        with tool_errors(), call_deadline(service.settings.call_timeout_seconds):
-            request = SearchRequest(version=self.resolve_version(version), query=query, limit=limit)
-            return await search_use_case.run(service, request)
+        request = SearchRequest(version=self.resolve_version(version), query=query, limit=limit)
+        return await search_use_case.run(service, request)
 
+    @guarded(tool_errors)
     async def read_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schema from these keyword parameters
         self,
         *,
@@ -116,38 +153,40 @@ class DocumentationTools:
         symbol: read_use_case.SymbolName,
         offset: read_use_case.PageOffset = 0,
         max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS,
-        context: mcpserver.Context,
+        service: ToolServiceDep,
     ) -> str:
         """Read one symbol's official documentation as Markdown, one page at a time.
 
         The first line names the symbol, its kind, the documentation version, and the
         source URL; the last line gives the next offset or marks the end of the section.
         """
-        service = self.service.reporting_to(ContextReporter(context=context))
-        with tool_errors(), call_deadline(service.settings.call_timeout_seconds):
-            request = ReadRequest(
-                version=self.resolve_version(version),
-                symbol=symbol,
-                offset=offset,
-                max_chars=max_chars,
-            )
-            return await read_use_case.run(service, request)
+        request = ReadRequest(
+            version=self.resolve_version(version),
+            symbol=symbol,
+            offset=offset,
+            max_chars=max_chars,
+        )
+        return await read_use_case.run(service, request)
 
+    @guarded(resource_errors)
     async def read_section(self, version: str, symbol: str) -> str:
-        with resource_errors(), call_deadline(self.service.settings.call_timeout_seconds):
-            created = create_python_version(version)
-            if isinstance(created, InvalidVersionError):
-                raise created
+        created = create_python_version(version)
+        if isinstance(created, InvalidVersionError):
+            raise created
 
-            found = await read_use_case.find_symbol(self.service, created, symbol)
-            return await self.service.section(found)
+        found = await read_use_case.find_symbol(self.service, created, symbol)
+        return await self.service.section(found)
 
 
 def build_server(
     service: DocumentationService, environment: Mapping[str, str]
 ) -> mcpserver.MCPServer:
     documentation = DocumentationTools(service=service, environment=environment)
-    server = mcpserver.MCPServer(SERVER_NAME, instructions=SERVER_INSTRUCTIONS)
+    server = mcpserver.MCPServer(
+        SERVER_NAME,
+        instructions=SERVER_INSTRUCTIONS,
+        lifespan=ServerLifespan(service=service, environment=environment).open,
+    )
     server.add_tool(documentation.search_python_docs, annotations=READ_ONLY_REMOTE)
     server.add_tool(
         documentation.read_python_docs, annotations=READ_ONLY_REMOTE, structured_output=False

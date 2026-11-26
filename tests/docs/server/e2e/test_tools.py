@@ -141,7 +141,11 @@ class TestCalls:
     async def test_an_unknown_symbol_is_a_tool_error_with_its_message(self, client: Client) -> None:
         arguments = {'version': DOCS_VERSION, 'symbol': 'os.path.nope'}
         result = await client.call_tool(READ_TOOL, arguments)
-        assert (result.is_error, 'Unknown symbol' in first_text(result)) == (True, True)
+        assert (
+            result.is_error,
+            'Unknown symbol' in first_text(result),
+            first_text(result) == f'Error executing tool {READ_TOOL}',
+        ) == (True, True, False)
 
     async def test_an_offset_past_the_section_end_is_a_tool_error_with_its_message(
         self, client: Client
@@ -154,6 +158,28 @@ class TestCalls:
         arguments = {'version': DOCS_VERSION, 'query': 'os.path'}
         result = await stalled_client.call_tool(SEARCH_TOOL, arguments)
         assert (result.is_error, 'deadline' in first_text(result)) == (True, True)
+
+    async def test_a_read_past_its_deadline_is_a_tool_error(self, stalled_client: Client) -> None:
+        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path'}
+        result = await stalled_client.call_tool(READ_TOOL, arguments)
+        assert (result.is_error, 'deadline' in first_text(result)) == (True, True)
+
+    async def test_a_search_for_an_unpublished_version_is_a_tool_error_with_its_message(
+        self, client: Client
+    ) -> None:
+        result = await client.call_tool(SEARCH_TOOL, {'version': '3.9', 'query': 'os.path'})
+        assert (result.is_error, 'documentation is not published' in first_text(result)) == (
+            True,
+            True,
+        )
+
+    async def test_the_tool_inputs_exclude_the_injected_service(self, client: Client) -> None:
+        listed = await client.list_tools()
+        properties = {tool.name: set(tool.input_schema['properties']) for tool in listed.tools}
+        assert properties == {
+            SEARCH_TOOL: {'version', 'query', 'limit'},
+            READ_TOOL: {'version', 'symbol', 'offset', 'max_chars'},
+        }
 
 
 class TestVersionDefault:

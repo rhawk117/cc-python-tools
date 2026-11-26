@@ -12,9 +12,11 @@ from python_docs_mcp.stores.disk_cache import NullInventoryStore
 from python_docs_mcp.stores.repository import documentation_http_client
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Mapping
+    from typing import Any
 
     import httpx2
+    from mcp.server import mcpserver
 
     from python_docs_mcp.core.interfaces import ClockInterface
     from python_docs_mcp.schemas.settings import Settings
@@ -27,6 +29,20 @@ class ServiceOptions:
     transport: httpx2.AsyncBaseTransport | None = None
     clock: ClockInterface = field(default_factory=get_server_clock)
     store: InventoryStore = field(default_factory=NullInventoryStore)
+
+
+SERVICE_STATE_KEY = 'service'
+ENVIRONMENT_STATE_KEY = 'environment'
+
+
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class ServerLifespan:
+    service: DocumentationService
+    environment: Mapping[str, str]
+
+    @asynccontextmanager
+    async def open(self, _server: mcpserver.MCPServer) -> AsyncGenerator[dict[str, Any]]:
+        yield {SERVICE_STATE_KEY: self.service, ENVIRONMENT_STATE_KEY: self.environment}
 
 
 @asynccontextmanager
