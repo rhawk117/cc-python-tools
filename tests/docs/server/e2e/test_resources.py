@@ -19,7 +19,12 @@ from python_agent_tools_docs.server import build_server
 from python_agent_tools_docs.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
-from tests.docs.support.samples import DOCS_VERSION, standard_pages
+from tests.docs.support.samples import (
+    DOCS_VERSION,
+    InventoryEntry,
+    inventory_bytes,
+    standard_pages,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Mapping
@@ -156,6 +161,39 @@ class ExpiredEntryStore:
     def read(self, version: PythonVersion) -> bytes | None: ...
 
     def write(self, version: PythonVersion, content: bytes) -> None: ...
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BulkInventoryStore:
+    symbol_count: int
+
+    def read(self, version: PythonVersion) -> bytes | None:
+        entries = [
+            InventoryEntry(name=f'bulk.symbol{number}', uri='library/bulk.html#$')
+            for number in range(self.symbol_count)
+        ]
+        return inventory_bytes(entries) if version.text == DOCS_VERSION else None
+
+    def write(self, version: PythonVersion, content: bytes) -> None: ...
+
+
+class TestCompletionCap:
+    symbol_count = 150
+    cap = 100
+
+    async def test_more_matches_than_the_cap_return_the_cap_and_flag_more(
+        self, site: DocsSite
+    ) -> None:
+        store = BulkInventoryStore(symbol_count=self.symbol_count)
+        options = ServiceOptions(transport=site.transport(), store=store)
+        async with (
+            open_documentation_service(Settings(), options) as service,
+            Client(build_server(service, {})) as client,
+        ):
+            result = await client.complete(
+                TEMPLATE, {'name': 'symbol', 'value': 'bulk.'}, {'version': DOCS_VERSION}
+            )
+        assert (len(result.completion.values), result.completion.has_more) == (self.cap, True)
 
 
 class TestExpiredEntryRace:

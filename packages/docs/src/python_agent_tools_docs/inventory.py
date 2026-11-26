@@ -78,11 +78,14 @@ def entry_url(entry: DataObjStr, version: PythonVersion) -> DocumentationUrl | N
     uri = expanded_uri(entry)
     if ambiguous_url_violation(uri) is not None:
         return None
+
     url = create_documentation_url(urljoin(version.base_url, uri))
     if not isinstance(url, DocumentationUrl):
         return None
+
     if url.version != version:
         return None
+
     return url
 
 

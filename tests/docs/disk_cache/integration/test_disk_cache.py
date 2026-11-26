@@ -61,26 +61,36 @@ def make_version(text: str) -> PythonVersion:
     return version
 
 
+TTL_SECONDS = 60.0
+
+
+@pytest.fixture
+def data_directory(tmp_path: Path) -> Path:
+    return tmp_path.joinpath('plugin-data')
+
+
+@pytest.fixture
+def clock() -> Clock:
+    return Clock()
+
+
+@pytest.fixture
+def store(data_directory: Path, clock: Clock) -> InventoryStore:
+    environment = {DATA_DIRECTORY_VARIABLE: str(data_directory)}
+    return create_inventory_store(environment, TTL_SECONDS, clock.read)
+
+
+def cached_files(data_directory: Path) -> list[Path]:
+    return sorted(path for path in data_directory.rglob('*') if path.is_file())
+
+
+def data_file_of(data_directory: Path) -> Path:
+    return next(path for path in cached_files(data_directory) if path.suffix == '.inv')
+
+
 class TestInventoryStore:
     version = make_version(DOCS_VERSION)
     content = b'inventory bytes'
-    ttl_seconds = 60.0
-
-    @pytest.fixture
-    def data_directory(self, tmp_path: Path) -> Path:
-        return tmp_path.joinpath('plugin-data')
-
-    @pytest.fixture
-    def clock(self) -> Clock:
-        return Clock()
-
-    @pytest.fixture
-    def store(self, data_directory: Path, clock: Clock) -> InventoryStore:
-        environment = {DATA_DIRECTORY_VARIABLE: str(data_directory)}
-        return create_inventory_store(environment, self.ttl_seconds, clock.read)
-
-    def cached_files(self, data_directory: Path) -> list[Path]:
-        return sorted(path for path in data_directory.rglob('*') if path.is_file())
 
     def test_written_bytes_are_read_back(self, store: InventoryStore) -> None:
         store.write(self.version, self.content)
@@ -89,40 +99,50 @@ class TestInventoryStore:
     def test_an_unknown_version_is_absent(self, store: InventoryStore) -> None:
         assert store.read(self.version) is None
 
+    def test_every_cache_path_stays_inside_the_data_directory(
+        self, store: InventoryStore, data_directory: Path
+    ) -> None:
+        store.write(self.version, self.content)
+        written = cached_files(data_directory)
+        assert written
+        assert all(path.resolve().is_relative_to(data_directory.resolve()) for path in written)
+
+    def test_an_unset_data_directory_writes_nothing(self, tmp_path: Path, clock: Clock) -> None:
+        store = create_inventory_store({}, TTL_SECONDS, clock.read)
+        store.write(self.version, self.content)
+        assert store.read(self.version) is None
+        assert list(tmp_path.iterdir()) == []
+
+
+class TestRejectedEntries:
+    version = make_version(DOCS_VERSION)
+    content = b'inventory bytes'
+
     def test_a_truncated_copy_is_deleted(self, store: InventoryStore, data_directory: Path) -> None:
         store.write(self.version, self.content)
-        data_file = next(
-            path for path in self.cached_files(data_directory) if path.suffix == '.inv'
-        )
+        data_file = data_file_of(data_directory)
         data_file.write_bytes(self.content[:4])
         assert store.read(self.version) is None
-        assert self.cached_files(data_directory) == []
+        assert cached_files(data_directory) == []
+
+    def test_a_same_length_tampered_copy_is_deleted(
+        self, store: InventoryStore, data_directory: Path
+    ) -> None:
+        store.write(self.version, self.content)
+        data_file = data_file_of(data_directory)
+        data_file.write_bytes(b'x' * len(self.content))
+        assert store.read(self.version) is None
+        assert cached_files(data_directory) == []
 
     def test_a_copy_older_than_the_ttl_is_deleted(
         self, store: InventoryStore, data_directory: Path, clock: Clock
     ) -> None:
         store.write(self.version, self.content)
-        file_age_seconds = self.ttl_seconds + 1
-        data_file = next(
-            path for path in self.cached_files(data_directory) if path.suffix == '.inv'
-        )
+        file_age_seconds = TTL_SECONDS + 1
+        data_file = data_file_of(data_directory)
         clock.now = data_file.stat().st_mtime + file_age_seconds
         assert store.read(self.version) is None
-        assert self.cached_files(data_directory) == []
-
-    def test_every_cache_path_stays_inside_the_data_directory(
-        self, store: InventoryStore, data_directory: Path
-    ) -> None:
-        store.write(self.version, self.content)
-        written = self.cached_files(data_directory)
-        assert written
-        assert all(path.resolve().is_relative_to(data_directory.resolve()) for path in written)
-
-    def test_an_unset_data_directory_writes_nothing(self, tmp_path: Path, clock: Clock) -> None:
-        store = create_inventory_store({}, self.ttl_seconds, clock.read)
-        store.write(self.version, self.content)
-        assert store.read(self.version) is None
-        assert list(tmp_path.iterdir()) == []
+        assert cached_files(data_directory) == []
 
 
 class TestUnusableDataDirectory:

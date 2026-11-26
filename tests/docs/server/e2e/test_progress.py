@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+import anyio
 import pytest
 from mcp import Client
 from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
@@ -14,6 +15,7 @@ from tests.docs.support.samples import DOCS_VERSION, inventory_bytes, standard_p
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from mcp.server import mcpserver
     from python_agent_tools_docs.domain import PythonVersion
 
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
@@ -40,9 +42,6 @@ class StoredInventory:
         return self.content if version.text == DOCS_VERSION else None
 
     def write(self, version: PythonVersion, content: bytes) -> None: ...
-
-    def contains(self, version: PythonVersion) -> bool:
-        return version.text == DOCS_VERSION
 
 
 @asynccontextmanager
@@ -123,3 +122,34 @@ class TestInventoryProgress:
         )
         assert log.events[-1] == (float(len(self.inventory)), None)
         assert {event[1] for event in log.events} == {None}
+
+
+class TestConcurrentProgress:
+    inventory = inventory_bytes()
+
+    async def search_with_progress(
+        self, server: mcpserver.MCPServer, log: ProgressLog, results: list[bool]
+    ) -> None:
+        async with Client(server) as client:
+            result = await client.call_tool(
+                SEARCH_TOOL,
+                {'version': DOCS_VERSION, 'query': 'os.path.join'},
+                progress_callback=log.record,
+            )
+        results.append(not result.is_error)
+
+    async def test_two_clients_searching_the_same_cold_version_both_get_progress(self) -> None:
+        site = DocsSite(pages=standard_pages())
+        options = ServiceOptions(transport=site.transport())
+        logs = [ProgressLog(), ProgressLog()]
+        results: list[bool] = []
+        async with open_documentation_service(
+            Settings(download_chunk_bytes=CHUNK_BYTES), options
+        ) as service:
+            server = build_server(service, {})
+            async with anyio.create_task_group() as clients:
+                for log in logs:
+                    clients.start_soon(self.search_with_progress, server, log, results)
+        assert results == [True, True]
+        assert [bool(log.events) for log in logs] == [True, True]
+        assert site.request_count(INVENTORY_PATH) == 1

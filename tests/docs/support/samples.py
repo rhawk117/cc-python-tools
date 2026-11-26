@@ -20,14 +20,14 @@ OS_PATH_PAGE = f"""<html><body>
 <dl class="py function">
 <dt class="sig" id="os.path.join">os.path.join(path, *paths)
 <a class="headerlink" href="#os.path.join">#</a></dt>
-<dd><p>Join one or more path segments, see <a href="os.html#os.sep">os.sep</a>.</p></dd>
+<dd><p>Join one or more path segments, see <a href="os.html#os.sep">os.sep</a>.</p>
+<script>tracking()</script><style>.hidden {{ display: none }}</style><nav>sitenav</nav></dd>
 </dl>
 <dl class="py function">
 <dt class="sig" id="os.path.isfile">os.path.isfile(path)</dt>
 <dd><p>Return True if path is an existing regular file.</p></dd>
 </dl>
 </section>
-<script>tracking()</script>
 </body></html>"""
 
 DATAMODEL_PAGE = """<html><body><section id="data-model">

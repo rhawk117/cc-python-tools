@@ -193,7 +193,28 @@ class HangingClose(httpx2.AsyncBaseTransport):
         await anyio.sleep_forever()
 
 
+@dataclass(slots=True, eq=False)
+class RecordingClose(httpx2.AsyncBaseTransport):
+    closed: bool = False
+
+    @override
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+class BodyFailedError(Exception):
+    pass
+
+
 class TestShutdown:
+    async def test_a_raising_body_still_closes_the_http_client(self) -> None:
+        transport = RecordingClose()
+        options = ServiceOptions(transport=transport, store=NullInventoryStore())
+        with pytest.RaisesGroup(BodyFailedError):
+            async with open_documentation_service(Settings(), options):
+                raise BodyFailedError
+        assert transport.closed
+
     async def test_a_hanging_client_close_is_abandoned_after_the_shutdown_timeout(self) -> None:
         options = ServiceOptions(transport=HangingClose(), store=NullInventoryStore())
         settings = Settings(shutdown_timeout_seconds=0.05)

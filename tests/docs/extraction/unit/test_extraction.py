@@ -1,11 +1,16 @@
 """One symbol's definition or section, cleaned and rendered as Markdown."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 from python_agent_tools_docs.domain import DocumentationUrl
 from python_agent_tools_docs.errors import MissingAnchorError
 from python_agent_tools_docs.extraction import extract_markdown
 
 from tests.docs.support.samples import FILLER_SENTENCE, OS_PATH_PAGE
+
+if TYPE_CHECKING:
+    from _pytest.mark.structures import ParameterSet
 
 
 def kept_text_cases() -> pytest.MarkDecorator:
@@ -19,15 +24,22 @@ def kept_text_cases() -> pytest.MarkDecorator:
     )
 
 
+def chrome_cases() -> list[ParameterSet]:
+    return [
+        pytest.param('tracking()', id='script'),
+        pytest.param('display: none', id='style'),
+        pytest.param('sitenav', id='nav'),
+        pytest.param('#os.path.join)', id='headerlink'),
+    ]
+
+
 def dropped_text_cases() -> pytest.MarkDecorator:
-    return pytest.mark.parametrize(
-        'unexpected',
-        [
-            pytest.param('tracking()', id='script'),
-            pytest.param('#os.path.join)', id='headerlink'),
-            pytest.param('isfile', id='neighbor'),
-        ],
-    )
+    neighbor = pytest.param('isfile', id='neighbor')
+    return pytest.mark.parametrize('unexpected', [*chrome_cases(), neighbor])
+
+
+def dropped_chrome_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('unexpected', chrome_cases())
 
 
 class TestExtractMarkdown:
@@ -49,6 +61,12 @@ class TestExtractMarkdown:
         self, join_definition: str, unexpected: str
     ) -> None:
         assert unexpected not in join_definition
+
+    @dropped_chrome_cases()
+    def test_section_drops_script_style_and_nav(self, unexpected: str) -> None:
+        url = DocumentationUrl(text=f'{self.page_url}#module-os.path')
+        section = extract_markdown(OS_PATH_PAGE.encode(), url)
+        assert unexpected not in section
 
     def test_module_anchor_returns_the_enclosing_section(self) -> None:
         url = DocumentationUrl(text=f'{self.page_url}#module-os.path')

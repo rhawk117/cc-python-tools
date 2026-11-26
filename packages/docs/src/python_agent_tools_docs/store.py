@@ -39,8 +39,10 @@ class PendingFill[V]:
     def result(self) -> V:
         if isinstance(self.outcome, FillSucceeded):
             return self.outcome.value
+
         if isinstance(self.outcome, FillFailed):
             raise self.outcome.error.with_traceback(None)
+
         raise FillInterruptedError
 
 
@@ -99,5 +101,6 @@ class CachedLoader[K: Hashable, V]:
     def remember(self, key: K, outcome: FillSucceeded[V] | FillFailed | None) -> None:
         if isinstance(outcome, FillSucceeded) and self.fits(outcome.value):
             self.values[key] = outcome.value
+
         if isinstance(outcome, FillFailed) and isinstance(outcome.error, PermanentMissError):
             self.misses[key] = outcome.error
