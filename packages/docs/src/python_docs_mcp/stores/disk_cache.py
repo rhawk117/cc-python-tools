@@ -6,13 +6,16 @@ import tempfile
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
-from time import time
 from typing import TYPE_CHECKING, BinaryIO, Protocol, runtime_checkable
 
+from python_docs_mcp.core.clock import get_server_clock
+
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Mapping
+    from collections.abc import Generator, Mapping
 
     from python_agent_tools_core.version import PythonVersion
+
+    from python_docs_mcp.core.interfaces import ClockInterface
 
 DATA_DIRECTORY_VARIABLE = 'CLAUDE_PLUGIN_DATA'
 CACHE_DIRECTORY = 'python-docs-inventories'
@@ -104,10 +107,10 @@ def replace_atomically(target: Path, content: bytes) -> None:
 class DiskInventoryStore:
     root: Path
     ttl_seconds: float
-    clock: Callable[[], float]
+    clock: ClockInterface
 
     def is_fresh(self, entry: StoredEntry) -> bool:
-        return self.clock() - entry.modified <= self.ttl_seconds
+        return self.clock.epoch_now() - entry.modified <= self.ttl_seconds
 
     def read(self, version: PythonVersion) -> bytes | None:
         paths = entry_paths(self.root, version)
@@ -139,11 +142,11 @@ class DiskInventoryStore:
 def create_inventory_store(
     environment: Mapping[str, str],
     ttl_seconds: float,
-    clock: Callable[[], float] = time,
+    clock: ClockInterface | None = None,
 ) -> InventoryStore:
     data_directory = environment.get(DATA_DIRECTORY_VARIABLE, '')
     if not data_directory:
         return NullInventoryStore()
 
     root = Path(data_directory).joinpath(CACHE_DIRECTORY).resolve()
-    return DiskInventoryStore(root=root, ttl_seconds=ttl_seconds, clock=clock)
+    return DiskInventoryStore(root=root, ttl_seconds=ttl_seconds, clock=clock or get_server_clock())

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from anyio.abc import TaskGroup
     from python_agent_tools_core.version import PythonVersion
 
+    from python_docs_mcp.core.interfaces import ClockInterface
     from python_docs_mcp.schemas.domain_types import DocumentationUrl
     from python_docs_mcp.schemas.settings import Settings
     from python_docs_mcp.services.matching import SymbolCatalog
@@ -33,7 +34,7 @@ class LoaderEnvironment:
     fills: TaskGroup
     settings: Settings
     store: InventoryStore
-    timer: Callable[[], float]
+    clock: ClockInterface
 
 
 def cached_loader[K: Hashable, V](
@@ -47,7 +48,7 @@ def cached_loader[K: Hashable, V](
         misses=TTLCache(
             maxsize=settings.inventory_cache_versions,
             ttl=settings.missing_version_ttl_seconds,
-            timer=environment.timer,
+            timer=environment.clock.monotonic,
         ),
         loader=loader,
         fills=environment.fills,
@@ -58,7 +59,9 @@ def cached_loader[K: Hashable, V](
 def catalog_cache(environment: LoaderEnvironment) -> TTLCache[PythonVersion, SymbolCatalog]:
     settings = environment.settings
     return TTLCache(
-        settings.inventory_cache_versions, settings.cache_ttl_seconds, timer=environment.timer
+        settings.inventory_cache_versions,
+        settings.cache_ttl_seconds,
+        timer=environment.clock.monotonic,
     )
 
 
@@ -67,7 +70,7 @@ def page_cache(environment: LoaderEnvironment) -> TTLCache[DocumentationUrl, byt
     return TTLCache(
         settings.page_cache_bytes,
         settings.cache_ttl_seconds,
-        timer=environment.timer,
+        timer=environment.clock.monotonic,
         getsizeof=len,
     )
 
@@ -77,7 +80,7 @@ def section_cache(environment: LoaderEnvironment) -> TTLCache[DocumentationUrl, 
     return TTLCache(
         settings.section_cache_characters,
         settings.cache_ttl_seconds,
-        timer=environment.timer,
+        timer=environment.clock.monotonic,
         getsizeof=len,
     )
 

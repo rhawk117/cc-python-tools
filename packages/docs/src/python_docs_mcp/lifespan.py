@@ -2,20 +2,21 @@
 
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from time import monotonic
 from typing import TYPE_CHECKING
 
 import anyio
 
+from python_docs_mcp.core.clock import get_server_clock
 from python_docs_mcp.resolve import LoaderEnvironment, compose_service
 from python_docs_mcp.stores.disk_cache import NullInventoryStore
 from python_docs_mcp.stores.repository import documentation_http_client
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
+    from collections.abc import AsyncGenerator
 
     import httpx2
 
+    from python_docs_mcp.core.interfaces import ClockInterface
     from python_docs_mcp.schemas.settings import Settings
     from python_docs_mcp.services.documentation_service import DocumentationService
     from python_docs_mcp.stores.disk_cache import InventoryStore
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
 class ServiceOptions:
     transport: httpx2.AsyncBaseTransport | None = None
-    timer: Callable[[], float] = monotonic
+    clock: ClockInterface = field(default_factory=get_server_clock)
     store: InventoryStore = field(default_factory=NullInventoryStore)
 
 
@@ -36,7 +37,7 @@ async def open_documentation_service(
     try:
         async with anyio.create_task_group() as fills:
             environment = LoaderEnvironment(
-                fills=fills, settings=settings, store=options.store, timer=options.timer
+                fills=fills, settings=settings, store=options.store, clock=options.clock
             )
             yield compose_service(client, environment)
             fills.cancel_scope.cancel()

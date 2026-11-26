@@ -25,16 +25,10 @@ if TYPE_CHECKING:
 
     from python_docs_mcp.stores.disk_cache import InventoryStore
 
+    from tests.docs.support.clock import FakeClock
+
 SUFFIXES = {'.inv', '.sha256'}
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
-
-
-@dataclass(slots=True)
-class Clock:
-    now: float = 0
-
-    def read(self) -> float:
-        return self.now
 
 
 @dataclass(slots=True, kw_only=True)
@@ -70,14 +64,9 @@ def data_directory(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def clock() -> Clock:
-    return Clock()
-
-
-@pytest.fixture
-def store(data_directory: Path, clock: Clock) -> InventoryStore:
+def store(data_directory: Path, clock: FakeClock) -> InventoryStore:
     environment = {DATA_DIRECTORY_VARIABLE: str(data_directory)}
-    return create_inventory_store(environment, TTL_SECONDS, clock.read)
+    return create_inventory_store(environment, TTL_SECONDS, clock)
 
 
 def cached_files(data_directory: Path) -> list[Path]:
@@ -107,8 +96,8 @@ class TestInventoryStore:
         assert written
         assert all(path.resolve().is_relative_to(data_directory.resolve()) for path in written)
 
-    def test_an_unset_data_directory_writes_nothing(self, tmp_path: Path, clock: Clock) -> None:
-        store = create_inventory_store({}, TTL_SECONDS, clock.read)
+    def test_an_unset_data_directory_writes_nothing(self, tmp_path: Path, clock: FakeClock) -> None:
+        store = create_inventory_store({}, TTL_SECONDS, clock)
         store.write(self.version, self.content)
         assert store.read(self.version) is None
         assert list(tmp_path.iterdir()) == []
@@ -135,12 +124,12 @@ class TestRejectedEntries:
         assert cached_files(data_directory) == []
 
     def test_a_copy_older_than_the_ttl_is_deleted(
-        self, store: InventoryStore, data_directory: Path, clock: Clock
+        self, store: InventoryStore, data_directory: Path, clock: FakeClock
     ) -> None:
         store.write(self.version, self.content)
         file_age_seconds = TTL_SECONDS + 1
         data_file = data_file_of(data_directory)
-        clock.now = data_file.stat().st_mtime + file_age_seconds
+        clock.set_epoch(data_file.stat().st_mtime + file_age_seconds)
         assert store.read(self.version) is None
         assert cached_files(data_directory) == []
 
