@@ -1,0 +1,29 @@
+[project]
+name = "python-agent-tools-docs"
+version = "0.1.0"
+description = "The documentation tools for python-agent-tools"
+readme = "README.md"
+authors = [
+    { name = "rhawk117", email = "noplaceLike127dot0dot0dot1@proton.me" },
+]
+requires-python = ">=3.14"
+dependencies = [
+    "anyio>=4.16.0",
+    "beautifulsoup4>=4.15.0",
+    "cachetools>=7.2.0",
+    "httpx2>=2.16.2",
+    "markdownify>=1.2.3",
+    "mcp>=2.3.0",
+    "packaging>=26.4",
+    "pydantic>=2.14.4",
+    "pydantic-settings>=2.16.3",
+    "rapidfuzz>=3.14.6",
+    "sphobjinv>=2.4",
+]
+
+[project.scripts]
+python-agent-tools-docs = "python_agent_tools_docs.main:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"

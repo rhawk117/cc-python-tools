@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "python-docs-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "--no-dev",
+        "--package",
+        "python-agent-tools-docs",
+        "python-agent-tools-docs"
+      ],
+      "env": {
+        "UV_PROJECT": "${CLAUDE_PLUGIN_ROOT}",
+        "UV_PROJECT_ENVIRONMENT": "${CLAUDE_PLUGIN_ROOT}/.venv"
+      }
+    }
+  }
+}

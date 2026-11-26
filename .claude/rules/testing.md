@@ -21,7 +21,7 @@ These rules add to the Python rules, which still apply in full.
 
 ## Tiers
 
-- Under `tests/core` and `tests/hooks`, tests live in `tests/<pkg>/<concept>/{unit,integration,smoke}/`. Under `tests/mcp`, they live in `tests/mcp/<concept>/{unit,integration,smoke,e2e}/`. The directory sets the tier. The root `conftest.py` marks each test from its directory, and a test module under any of these trees outside a tier directory fails collection. Never write a tier mark by hand under `tests/core`, `tests/hooks` or `tests/mcp`. Other test trees keep explicit tier marks until they adopt this layout.
+- Under `tests/core` and `tests/hooks`, tests live in `tests/<pkg>/<concept>/{unit,integration,smoke}/`. Under `tests/mcp` and `tests/docs`, they live in `tests/<pkg>/<concept>/{unit,integration,smoke,e2e}/`. The directory sets the tier. The root `conftest.py` marks each test from its directory, and a test module under any of these trees outside a tier directory fails collection. Never write a tier mark by hand under `tests/core`, `tests/hooks`, `tests/mcp` or `tests/docs`. Other test trees keep explicit tier marks until they adopt this layout.
 - `unit` tests use fakes and memory. `integration` tests touch a database, real git, a child process or the filesystem. `smoke` tests run an entry point through real resources.
 
 ## Helpers
