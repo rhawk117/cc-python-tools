@@ -26,6 +26,7 @@ class SilentReporter:
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
 class ProgressBoard:
     watchers: dict[PythonVersion, list[ProgressReporter]] = field(default_factory=dict)
+    failed: dict[PythonVersion, set[int]] = field(default_factory=dict)
 
     @contextmanager
     def watch(self, version: PythonVersion, reporter: ProgressReporter) -> Generator[None]:
@@ -35,14 +36,23 @@ class ProgressBoard:
             yield
         finally:
             reporters.remove(reporter)
+            self.failed.get(version, set()).discard(id(reporter))
             if not reporters:
                 self.watchers.pop(version, None)
+                self.failed.pop(version, None)
+
+    def watcher_count(self, version: PythonVersion) -> int:
+        return len(self.watchers.get(version, ()))
 
     async def publish(self, version: PythonVersion, read: int, total: int | None) -> None:
         for reporter in tuple(self.watchers.get(version, ())):
+            if id(reporter) in self.failed.get(version, ()):
+                continue
+
             try:
                 await reporter.report(read, total)
             except Exception:
+                self.failed.setdefault(version, set()).add(id(reporter))
                 logger.warning('progress watcher failed for %s', version, exc_info=True)
 
 
