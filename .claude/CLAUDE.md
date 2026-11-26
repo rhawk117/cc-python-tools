@@ -22,10 +22,9 @@ Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest, mdfor
 ## Layout
 
 - The plugin sits at the repository root, and `.claude-plugin/plugin.json` contains its manifest. The root `pyproject.toml` is both the plugin project and the uv workspace root, with members under `packages/`.
-- `packages/core` (`python_agent_tools_core`) is the shared package that `packages/hooks` and `packages/mcp` depend on through workspace sources.
-- `packages/hooks` holds the plugin's hook code (`python_agent_tools_hooks`), which `hooks/hooks.json` runs through `hooks/hook.sh`. No hook is registered yet, and the console script refuses every subcommand. `.claude/hooks/pyhooks.py` is the project's own hook script, a PEP 723 script that `.claude/settings.json` wires to Write, Edit and Read. ty does not check it, because `ty.toml` includes only `packages` and `tests`.
-- `packages/mcp` holds the `agent-tools-mcp` server (`python_agent_tools_mcp`), which `mcp-servers/agent-tools-mcp.json` launches with uv. It serves no tools yet.
-- `packages/docs` holds the `python-docs-mcp` server (`python_agent_tools_docs`), which `mcp-servers/python-docs-mcp.json` launches with uv. It serves Python documentation search and reading tools.
+- `packages/core` (`python_agent_tools_core`) is the shared package meant to hold the code that resolves uv and a project's `pyproject.toml`, for reuse across the workspace's tools. It holds no code yet, and nothing depends on it yet.
+- The plugin registers no hooks. `.claude/hooks/pyhooks.py` is the project's own hook script, a PEP 723 script that `.claude/settings.json` wires to Write, Edit and Read. ty does not check it, because `ty.toml` includes only `packages` and `tests`.
+- `packages/docs` holds the `python-docs-mcp` server (`python_docs_mcp`), which `mcp-servers/python-docs-mcp.json` launches with uv. It serves Python documentation search and reading tools.
 - Read `.claude/rules/python.md` before writing Python and `.claude/rules/testing.md` before writing tests. Both load on their own when you touch a matching file.
 
 ## Conventions

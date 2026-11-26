@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, override
 import anyio
 import httpx2
 import pytest
-from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
-from python_agent_tools_docs.disk_cache import NullInventoryStore
-from python_agent_tools_docs.domain import PythonVersion, create_python_version
-from python_agent_tools_docs.errors import CallDeadlineExceededError, VersionNotPublishedError
-from python_agent_tools_docs.services import call_deadline
-from python_agent_tools_docs.settings import Settings
+from python_docs_mcp.composition import ServiceOptions, open_documentation_service
+from python_docs_mcp.disk_cache import NullInventoryStore
+from python_docs_mcp.domain import PythonVersion, create_python_version
+from python_docs_mcp.errors import CallDeadlineExceededError, VersionNotPublishedError
+from python_docs_mcp.services import call_deadline
+from python_docs_mcp.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages
@@ -18,7 +18,7 @@ from tests.docs.support.samples import DOCS_VERSION, standard_pages
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from python_agent_tools_docs.services import (
+    from python_docs_mcp.services import (
         DocumentationService,
     )
 

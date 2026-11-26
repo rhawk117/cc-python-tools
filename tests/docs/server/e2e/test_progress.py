@@ -7,11 +7,11 @@ import anyio
 import pytest
 from anyio.lowlevel import checkpoint
 from mcp import Client
-from python_agent_tools_docs import progress
-from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
-from python_agent_tools_docs.domain import PythonVersion
-from python_agent_tools_docs.server import build_server
-from python_agent_tools_docs.settings import Settings
+from python_docs_mcp import progress
+from python_docs_mcp.composition import ServiceOptions, open_documentation_service
+from python_docs_mcp.domain import PythonVersion
+from python_docs_mcp.server import build_server
+from python_docs_mcp.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, inventory_bytes, standard_pages
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from mcp.server import mcpserver
-    from python_agent_tools_docs.services import DocumentationService
+    from python_docs_mcp.services import DocumentationService
 
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
 SEARCH_TOOL = 'search_python_docs'

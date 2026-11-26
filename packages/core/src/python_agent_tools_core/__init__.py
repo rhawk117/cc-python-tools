@@ -1,1 +1,1 @@
-"""The shared core of python-agent-tools, which the hooks and the MCP server depend on."""
+"""The shared core of python-agent-tools, for code reused across the workspace's tools."""

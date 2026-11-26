@@ -7,8 +7,8 @@
         "--locked",
         "--no-dev",
         "--package",
-        "python-agent-tools-docs",
-        "python-agent-tools-docs"
+        "python-docs-mcp",
+        "python-docs-mcp"
       ],
       "env": {
         "UV_PROJECT": "${CLAUDE_PLUGIN_ROOT}",

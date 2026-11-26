@@ -1,5 +1,5 @@
 [project]
-name = "python-agent-tools-docs"
+name = "python-docs-mcp"
 version = "0.1.0"
 description = "The documentation tools for python-agent-tools"
 readme = "README.md"
@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.scripts]
-python-agent-tools-docs = "python_agent_tools_docs.main:main"
+python-docs-mcp = "python_docs_mcp.main:main"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]

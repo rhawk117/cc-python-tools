@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from python_agent_tools_docs.domain import PythonVersion
-from python_agent_tools_docs.errors import VersionRequiredError
-from python_agent_tools_docs.project import (
+from python_docs_mcp.domain import PythonVersion
+from python_docs_mcp.errors import VersionRequiredError
+from python_docs_mcp.project import (
     PROJECT_ROOT_VARIABLE,
     floor_from_requires_python,
     read_pyproject,

@@ -7,8 +7,8 @@ SERVER = StdioServerParameters(
         '--locked',
         '--no-dev',
         '--package',
-        'python-agent-tools-docs',
-        'python-agent-tools-docs',
+        'python-docs-mcp',
+        'python-docs-mcp',
     ],
 )
 

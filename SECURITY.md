@@ -60,10 +60,6 @@ These checks find issues covered by their advisory sources and configured polici
 > [!WARNING]
 > Automated tracking issues are public, so they are not a disclosure channel. If a finding involves an unreported exploitable weakness or sensitive data, report it privately and keep the extra details out of the issue.
 
-## What the plugin's hooks do
-
-`hooks/hooks.json` registers no hooks yet. Each hook the plugin adds runs `hooks/hook.sh`, which launches the `python-agent-tools-hooks` console script with uv from the plugin's own environment. When the launcher cannot run, the wrapper writes one line to standard error and exits 0, so a broken hook never blocks a tool call. The hooks are not a permission control: they do not run or approve commands, and they do not replace the permission prompts of Claude Code.
-
 ## Guidance for users
 
 - Install updates from trusted repository releases, and review changes to hooks, scripts, executables and external-tool configuration.

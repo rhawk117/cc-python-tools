@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from python_agent_tools_docs import errors
-from python_agent_tools_docs.errors import (
+from python_docs_mcp import errors
+from python_docs_mcp.errors import (
     AmbiguousUrlError,
     CallDeadlineExceededError,
     CapacityError,

@@ -6,9 +6,7 @@ requires-python = ">=3.14"
 members = [
     "python-agent-tools",
     "python-agent-tools-core",
-    "python-agent-tools-docs",
-    "python-agent-tools-hooks",
-    "python-agent-tools-mcp",
+    "python-docs-mcp",
 ]
 
 [[package]]
@@ -987,7 +985,7 @@ version = "0.1.0"
 source = { editable = "packages/core" }
 
 [[package]]
-name = "python-agent-tools-docs"
+name = "python-docs-mcp"
 version = "0.1.0"
 source = { editable = "packages/docs" }
 dependencies = [
@@ -1017,32 +1015,6 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.16.3" },
     { name = "rapidfuzz", specifier = ">=3.14.6" },
     { name = "sphobjinv", specifier = ">=2.4" },
-]
-
-[[package]]
-name = "python-agent-tools-hooks"
-version = "0.1.0"
-source = { editable = "packages/hooks" }
-dependencies = [
-    { name = "python-agent-tools-core" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "python-agent-tools-core", editable = "packages/core" }]
-
-[[package]]
-name = "python-agent-tools-mcp"
-version = "0.1.0"
-source = { editable = "packages/mcp" }
-dependencies = [
-    { name = "mcp" },
-    { name = "python-agent-tools-core" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "mcp", specifier = ">=2.3.0" },
-    { name = "python-agent-tools-core", editable = "packages/core" },
 ]
 
 [[package]]

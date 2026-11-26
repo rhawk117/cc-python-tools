@@ -26,7 +26,7 @@ Claude Code changes major behaviour.
   `mcp/server/mcpserver/utilities/context_injection.py:13`; `tools/base.py:88-89`). There is no
   context variable to read it from, and the parameter is left out of the input schema. Under
   ruff `max-args = 3` this cost a `PLR0913` noqa on each docs tool
-  (`packages/docs/src/python_agent_tools_docs/server.py:97` and `:115`).
+  (`packages/docs/src/python_docs_mcp/server.py:97` and `:115`).
 - **Confirmed:** `Context.report_progress(progress, total=None, message=None)`
   (`mcp/server/mcpserver/context.py:120`) is a no-op when the caller sent no progress token
   (`report_progress` docstring, `mcp/server/session.py:429`). A client opts in by passing
@@ -39,7 +39,7 @@ Claude Code changes major behaviour.
   (`server.py:739`) registers the one `completion/complete` handler, called with
   `(ref, argument, context)`. See `tests/docs/server/e2e/test_resources.py`.
 - **Confirmed:** `ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)`
-  (`READ_ONLY_REMOTE`, `packages/docs/src/python_agent_tools_docs/server.py:44`) serializes as
+  (`READ_ONLY_REMOTE`, `packages/docs/src/python_docs_mcp/server.py:44`) serializes as
   `readOnlyHint`, `idempotentHint` and `openWorldHint`. Checked on 2026-11-25 with
   `ToolAnnotations(...).model_dump(by_alias=True, exclude_none=True)`, which printed
   `{'readOnlyHint': True, 'idempotentHint': True, 'openWorldHint': True}`.
@@ -134,11 +134,12 @@ Source: [mark tools that are safe to call twice](https://code.claude.com/docs/en
 - `mcpServers` in `plugin.json` accepts a path to a `.json` file (which may hold several
   servers), an `.mcpb` or `.dxt` bundle, an inline map, or an array of these
   ([plugins reference, mcpServers](https://code.claude.com/docs/en/plugins-reference.md#mcpservers)).
-- **Confirmed:** `mcpServers` as an array of two `.json` paths is accepted.
-  `.claude-plugin/plugin.json` holds
-  `["./mcp-servers/agent-tools-mcp.json","./mcp-servers/python-docs-mcp.json"]`, and
-  `claude plugin validate --strict .` on 2026-11-25 printed both servers (`agent-tools-mcp` and
-  `python-docs-mcp`) and "✔ Validation passed", as reported by the build session. Its
+- **Confirmed:** `mcpServers` as an array of two `.json` paths is accepted. With
+  `["./mcp-servers/agent-tools-mcp.json","./mcp-servers/python-docs-mcp.json"]` in
+  `.claude-plugin/plugin.json`, `claude plugin validate --strict .` on 2026-11-25 printed both
+  servers (`agent-tools-mcp` and `python-docs-mcp`) and "✔ Validation passed", as reported by
+  the build session. `agent-tools-mcp` has since been removed, and the array now holds only
+  `./mcp-servers/python-docs-mcp.json`. Its
   directory-profile checks (`README_TRIVIAL`, `ICON_MISSING`) and the "Hosts not declared: list
   what these parts reach under network.hosts" note do not change the verdict.
 - **Sandbox:** inside the Claude Code Bash sandbox `.mcp.json` appears as a character device and
@@ -151,7 +152,7 @@ Source: [mark tools that are safe to call twice](https://code.claude.com/docs/en
 - This repository launches each server with
   `uv run --locked --no-dev --package <member> <script>`, with `UV_PROJECT` set to
   `${CLAUDE_PLUGIN_ROOT}` and `UV_PROJECT_ENVIRONMENT` to `${CLAUDE_PLUGIN_ROOT}/.venv`
-  (`mcp-servers/agent-tools-mcp.json`).
+  (`mcp-servers/python-docs-mcp.json`).
 
 ## httpx2
 
