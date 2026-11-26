@@ -4,18 +4,18 @@ from typing import TYPE_CHECKING
 
 import pytest
 from python_docs_mcp.adapters.inventory import parse_inventory
-from python_docs_mcp.matching import (
+from python_docs_mcp.schemas.domain_types import create_python_version
+from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.services.matching import (
     MatchTier,
     catalog_symbols,
     match_symbols,
 )
-from python_docs_mcp.schemas.domain_types import create_python_version
-from python_docs_mcp.schemas.settings import Settings
 
 from tests.docs.support.samples import DOCS_VERSION, inventory_bytes
 
 if TYPE_CHECKING:
-    from python_docs_mcp.matching import (
+    from python_docs_mcp.services.matching import (
         SymbolCatalog,
     )
 

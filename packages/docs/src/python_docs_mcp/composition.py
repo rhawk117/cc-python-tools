@@ -9,7 +9,11 @@ import anyio
 from cachetools import TTLCache
 
 from python_docs_mcp.adapters.progress import ProgressBoard
-from python_docs_mcp.services import CatalogLoader, DocumentationService, SectionLoader
+from python_docs_mcp.services.documentation_service import (
+    CatalogLoader,
+    DocumentationService,
+    SectionLoader,
+)
 from python_docs_mcp.stores.disk_cache import NullInventoryStore
 from python_docs_mcp.stores.repository import DocumentationSource, documentation_http_client
 from python_docs_mcp.stores.store import CachedLoader
@@ -20,9 +24,9 @@ if TYPE_CHECKING:
     import httpx2
     from anyio.abc import TaskGroup
 
-    from python_docs_mcp.matching import SymbolCatalog
     from python_docs_mcp.schemas.domain_types import DocumentationUrl, PythonVersion
     from python_docs_mcp.schemas.settings import Settings
+    from python_docs_mcp.services.matching import SymbolCatalog
     from python_docs_mcp.stores.disk_cache import InventoryStore
 
 

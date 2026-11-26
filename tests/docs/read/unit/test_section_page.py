@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from python_docs_mcp.read_python_docs import SectionPage
 from python_docs_mcp.schemas.domain_types import DocumentationUrl, Symbol
+from python_docs_mcp.services.read_python_docs import SectionPage
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet

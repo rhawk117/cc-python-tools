@@ -11,11 +11,11 @@ from mcp.types import (
     TextContent,
     TextResourceContents,
 )
-from python_docs_mcp.completions import RESOURCE_URI
 from python_docs_mcp.composition import ServiceOptions, open_documentation_service
 from python_docs_mcp.project import PROJECT_ROOT_VARIABLE
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.server import build_server
+from python_docs_mcp.services.completions import RESOURCE_URI
 from python_docs_mcp.stores.disk_cache import DATA_DIRECTORY_VARIABLE, create_inventory_store
 
 from tests.docs.support.docs_site import DocsSite

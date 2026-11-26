@@ -3,14 +3,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 from python_docs_mcp.core.exception import OffsetOutOfRangeError, UnknownSymbolError
-from python_docs_mcp.matching import catalog_symbols
-from python_docs_mcp.read_python_docs import ReadRequest, run
 from python_docs_mcp.schemas.domain_types import DocumentationUrl, Symbol, SymbolIndex
 from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.services.matching import catalog_symbols
+from python_docs_mcp.services.read_python_docs import ReadRequest, run
 
 if TYPE_CHECKING:
-    from python_docs_mcp.matching import SymbolCatalog
     from python_docs_mcp.schemas.domain_types import PythonVersion
+    from python_docs_mcp.services.matching import SymbolCatalog
 
 SOURCE_URL = DocumentationUrl(text='https://docs.python.org/3.13/library/os.path.html#os.path.join')
 JOIN = Symbol(name='os.path.join', kind='function', source_url=SOURCE_URL)

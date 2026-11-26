@@ -10,9 +10,6 @@ from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from python_docs_mcp import read_python_docs as read_use_case
-from python_docs_mcp import search_python_docs as search_use_case
-from python_docs_mcp.completions import RESOURCE_URI, DocumentationCompletions
 from python_docs_mcp.composition import ServiceOptions, open_documentation_service
 from python_docs_mcp.core.exception import (
     DocumentationToolsError,
@@ -20,18 +17,21 @@ from python_docs_mcp.core.exception import (
     VersionRequiredError,
 )
 from python_docs_mcp.project import resolve_floor
-from python_docs_mcp.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
 from python_docs_mcp.schemas.base import VersionText
 from python_docs_mcp.schemas.domain_types import create_python_version
-from python_docs_mcp.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
-from python_docs_mcp.services import call_deadline
+from python_docs_mcp.services import read_python_docs as read_use_case
+from python_docs_mcp.services import search_python_docs as search_use_case
+from python_docs_mcp.services.completions import RESOURCE_URI, DocumentationCompletions
+from python_docs_mcp.services.documentation_service import call_deadline
+from python_docs_mcp.services.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
+from python_docs_mcp.services.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
 from python_docs_mcp.stores.disk_cache import create_inventory_store
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping
 
     from python_docs_mcp.schemas.settings import Settings
-    from python_docs_mcp.services import DocumentationService
+    from python_docs_mcp.services.documentation_service import DocumentationService
 
 SERVER_NAME = 'python-docs-mcp'
 SERVER_INSTRUCTIONS = (

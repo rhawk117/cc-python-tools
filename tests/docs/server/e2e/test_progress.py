@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from mcp.server import mcpserver
-    from python_docs_mcp.services import DocumentationService
+    from python_docs_mcp.services.documentation_service import DocumentationService
 
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
 SEARCH_TOOL = 'search_python_docs'

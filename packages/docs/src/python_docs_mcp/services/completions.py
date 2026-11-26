@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from mcp.types import CompletionArgument, CompletionContext, PromptReference
 
     from python_docs_mcp.schemas.settings import Settings
-    from python_docs_mcp.services import DocumentationService
+    from python_docs_mcp.services.documentation_service import DocumentationService
 
 RESOURCE_URI = 'python-docs://{version}/{symbol}'
 MAX_COMPLETION_VALUES = 100

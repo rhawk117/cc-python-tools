@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field, NonNegativeInt, PositiveInt, StringConstraints
 
-from python_docs_mcp import matching
 from python_docs_mcp.schemas import base as schemas
 from python_docs_mcp.schemas.domain_types import PythonVersion
+from python_docs_mcp.services import matching
 
 if TYPE_CHECKING:
-    from python_docs_mcp.matching import SymbolMatch
+    from python_docs_mcp.services.matching import SymbolMatch
     from python_docs_mcp.stores.catalogs import DocumentationCatalogs
 
 DEFAULT_SEARCH_LIMIT = 10
