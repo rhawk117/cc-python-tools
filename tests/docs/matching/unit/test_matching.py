@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from python_docs_mcp.inventory import parse_inventory
+from python_docs_mcp.adapters.inventory import parse_inventory
 from python_docs_mcp.matching import (
     MatchTier,
     catalog_symbols,

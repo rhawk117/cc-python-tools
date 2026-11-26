@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import anyio
 import httpx2
 import pytest
+from python_docs_mcp.adapters.progress import ProgressBoard
 from python_docs_mcp.core.exception import (
     DownloadTooLargeError,
     PageNotFoundError,
@@ -10,7 +11,6 @@ from python_docs_mcp.core.exception import (
     UpstreamStatusError,
     VersionNotPublishedError,
 )
-from python_docs_mcp.progress import ProgressBoard
 from python_docs_mcp.schemas.domain_types import (
     DocumentationUrl,
     PythonVersion,

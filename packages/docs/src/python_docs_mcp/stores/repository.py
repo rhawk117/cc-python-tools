@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import httpx2
 
+from python_docs_mcp.adapters.progress import SilentReporter, VersionProgress
 from python_docs_mcp.core.exception import (
     DownloadTooLargeError,
     PageNotFoundError,
@@ -12,14 +13,13 @@ from python_docs_mcp.core.exception import (
     UpstreamStatusError,
     VersionNotPublishedError,
 )
-from python_docs_mcp.progress import SilentReporter, VersionProgress
 from python_docs_mcp.schemas.domain_types import DocumentationUrl, create_documentation_url
 
 if TYPE_CHECKING:
     import anyio
 
+    from python_docs_mcp.adapters.progress import ProgressBoard, ProgressReporter
     from python_docs_mcp.core.exception import DocumentationError
-    from python_docs_mcp.progress import ProgressBoard, ProgressReporter
     from python_docs_mcp.schemas.domain_types import PythonVersion
     from python_docs_mcp.schemas.settings import Settings
 

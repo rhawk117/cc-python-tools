@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 
 import anyio
 import pytest
-from python_docs_mcp import progress
-from python_docs_mcp.progress import ProgressBoard
+from python_docs_mcp.adapters import progress
+from python_docs_mcp.adapters.progress import ProgressBoard
 from python_docs_mcp.schemas.domain_types import PythonVersion
 
 

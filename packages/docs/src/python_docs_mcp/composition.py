@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import anyio
 from cachetools import TTLCache
 
-from python_docs_mcp.progress import ProgressBoard
+from python_docs_mcp.adapters.progress import ProgressBoard
 from python_docs_mcp.services import CatalogLoader, DocumentationService, SectionLoader
 from python_docs_mcp.stores.disk_cache import NullInventoryStore
 from python_docs_mcp.stores.repository import DocumentationSource, documentation_http_client

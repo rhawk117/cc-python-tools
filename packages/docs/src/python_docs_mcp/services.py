@@ -6,18 +6,18 @@ from typing import TYPE_CHECKING
 
 import anyio
 
+from python_docs_mcp.adapters.extraction import extract_markdown
+from python_docs_mcp.adapters.inventory import parse_inventory
+from python_docs_mcp.adapters.progress import SilentReporter
 from python_docs_mcp.core.exception import CallDeadlineExceededError
-from python_docs_mcp.extraction import extract_markdown
-from python_docs_mcp.inventory import parse_inventory
 from python_docs_mcp.matching import catalog_symbols
-from python_docs_mcp.progress import SilentReporter
 from python_docs_mcp.stores.store import FillSucceeded
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from python_docs_mcp.adapters.progress import ProgressBoard, ProgressReporter
     from python_docs_mcp.matching import SymbolCatalog
-    from python_docs_mcp.progress import ProgressBoard, ProgressReporter
     from python_docs_mcp.schemas.domain_types import DocumentationUrl, PythonVersion, Symbol
     from python_docs_mcp.schemas.settings import Settings
     from python_docs_mcp.stores.disk_cache import InventoryStore
