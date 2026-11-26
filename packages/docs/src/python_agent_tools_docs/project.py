@@ -27,6 +27,8 @@ def read_pyproject(environment: Mapping[str, str]) -> str | VersionRequiredError
 
     try:
         return Path(root).joinpath(PYPROJECT_NAME).read_text(encoding='utf-8')
+    except UnicodeDecodeError:
+        return VersionRequiredError(f'{PYPROJECT_NAME} is not valid UTF-8')
     except OSError:
         return VersionRequiredError(f'{PYPROJECT_NAME} could not be read in the project directory')
 

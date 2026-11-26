@@ -32,5 +32,19 @@ class TestResolveFloor:
         self.write_pyproject(environment, '[project]\nname = "x"\n')
         assert isinstance(resolve_floor(environment), VersionRequiredError)
 
+    def test_a_pyproject_that_is_not_utf8_asks_for_version(
+        self, environment: dict[str, str]
+    ) -> None:
+        root = environment[PROJECT_ROOT_VARIABLE]
+        (Path(root) / 'pyproject.toml').write_bytes(b'[project]\nname = "\xff\xfe"\n')
+        assert isinstance(resolve_floor(environment), VersionRequiredError)
+
+    @pytest.mark.parametrize('requires_python', ['3', '"nonsense"'])
+    def test_an_unusable_requires_python_asks_for_version(
+        self, environment: dict[str, str], requires_python: str
+    ) -> None:
+        self.write_pyproject(environment, f'[project]\nrequires-python = {requires_python}\n')
+        assert isinstance(resolve_floor(environment), VersionRequiredError)
+
     def test_an_unset_project_directory_asks_for_version(self) -> None:
         assert isinstance(resolve_floor({}), VersionRequiredError)

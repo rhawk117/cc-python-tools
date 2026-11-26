@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import pytest
 from python_agent_tools_docs.domain import PythonVersion
 from python_agent_tools_docs.errors import VersionRequiredError
@@ -7,6 +9,9 @@ from python_agent_tools_docs.project import (
     read_pyproject,
     read_requires_python,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def floor_cases() -> pytest.MarkDecorator:
@@ -65,3 +70,8 @@ class TestReadPyproject:
 
     def test_an_empty_project_directory_asks_for_version(self) -> None:
         assert isinstance(read_pyproject({PROJECT_ROOT_VARIABLE: ''}), VersionRequiredError)
+
+    def test_a_project_file_that_is_not_utf8_asks_for_version(self, tmp_path: Path) -> None:
+        (tmp_path / 'pyproject.toml').write_bytes(b'\xff\xfe')
+        result = read_pyproject({PROJECT_ROOT_VARIABLE: str(tmp_path)})
+        assert isinstance(result, VersionRequiredError)
