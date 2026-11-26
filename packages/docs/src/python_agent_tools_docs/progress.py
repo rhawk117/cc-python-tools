@@ -1,5 +1,6 @@
 """Download progress: who is watching a version's inventory, and what each watcher is told."""
 
+import logging
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
@@ -8,6 +9,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from python_agent_tools_docs.domain import PythonVersion
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -37,7 +40,10 @@ class ProgressBoard:
 
     async def publish(self, version: PythonVersion, read: int, total: int | None) -> None:
         for reporter in tuple(self.watchers.get(version, ())):
-            await reporter.report(read, total)
+            try:
+                await reporter.report(read, total)
+            except Exception:
+                logger.warning('progress watcher failed for %s', version, exc_info=True)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
