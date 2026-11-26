@@ -10,6 +10,8 @@ pytestmark = pytest.mark.unit
 
 
 class TestServerClock:
+    resolution = 1e-3
+
     def test_the_shared_clock_is_one_instance_implementing_the_protocol(self) -> None:
         assert get_server_clock() is get_server_clock()
         assert isinstance(get_server_clock(), ClockInterface)
@@ -21,9 +23,10 @@ class TestServerClock:
 
     def test_the_readings_agree_with_the_wall_clock(self) -> None:
         clock = ServerClock()
-        before = datetime.now(UTC).timestamp()
+        before = datetime.now(UTC).timestamp() - self.resolution
         epoch = clock.epoch_now()
-        assert before <= epoch <= datetime.now(UTC).timestamp()
+        after = clock.now().timestamp() + self.resolution
+        assert before <= epoch <= after
         assert abs(clock.timestamp() - epoch) <= 1
 
     def test_the_timestamp_unit_scales_the_epoch(self) -> None:
