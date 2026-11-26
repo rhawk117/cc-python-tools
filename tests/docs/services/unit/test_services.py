@@ -4,12 +4,10 @@ from typing import TYPE_CHECKING
 
 import anyio
 import pytest
+from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.domain import PythonVersion, create_python_version
 from python_agent_tools_docs.errors import CallDeadlineExceededError, VersionNotPublishedError
-from python_agent_tools_docs.services import (
-    build_documentation_service,
-    call_deadline,
-)
+from python_agent_tools_docs.services import call_deadline
 from python_agent_tools_docs.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
@@ -51,7 +49,8 @@ def make_version(text: str) -> PythonVersion:
 async def run_harness(pages: dict[str, bytes]) -> AsyncGenerator[ServiceHarness]:
     site = DocsSite(pages=pages)
     clock = Clock()
-    async with build_documentation_service(Settings(), site.transport(), clock.read) as service:
+    options = ServiceOptions(transport=site.transport(), timer=clock.read)
+    async with open_documentation_service(Settings(), options) as service:
         yield ServiceHarness(site=site, clock=clock, service=service)
 
 

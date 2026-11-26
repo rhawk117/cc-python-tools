@@ -7,9 +7,9 @@ import httpx2
 import pytest
 from mcp import Client
 from mcp.types import TextContent
+from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.project import PROJECT_ROOT_VARIABLE
 from python_agent_tools_docs.server import build_server
-from python_agent_tools_docs.services import build_documentation_service
 from python_agent_tools_docs.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
@@ -37,7 +37,7 @@ async def open_client(
     environment: Mapping[str, str] | None = None,
 ) -> AsyncGenerator[Client]:
     async with (
-        build_documentation_service(settings, transport) as service,
+        open_documentation_service(settings, ServiceOptions(transport=transport)) as service,
         Client(build_server(service, environment or {})) as client,
     ):
         yield client

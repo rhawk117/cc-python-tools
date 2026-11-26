@@ -4,11 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from mcp import Client
+from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.server import build_server
-from python_agent_tools_docs.services import (
-    ServiceOptions,
-    open_documentation_service,
-)
 from python_agent_tools_docs.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite

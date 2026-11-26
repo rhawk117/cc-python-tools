@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import anyio
 import httpx2
 import pytest
+from python_agent_tools_docs.disk_cache import MemoryInventoryStore
 from python_agent_tools_docs.domain import (
     DocumentationUrl,
     PythonVersion,
@@ -16,6 +17,7 @@ from python_agent_tools_docs.errors import (
     UpstreamStatusError,
     VersionNotPublishedError,
 )
+from python_agent_tools_docs.progress import ProgressBoard
 from python_agent_tools_docs.repository import (
     DocumentationSource,
     documentation_http_client,
@@ -54,6 +56,8 @@ def create_source(client: httpx2.AsyncClient, settings: Settings) -> Documentati
         downloads=anyio.CapacityLimiter(settings.download_concurrency),
         parsers=anyio.CapacityLimiter(settings.parse_concurrency),
         settings=settings,
+        store=MemoryInventoryStore(),
+        board=ProgressBoard(),
     )
 
 

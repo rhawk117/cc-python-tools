@@ -8,8 +8,8 @@ from python_agent_tools_docs.domain import VERSION_PATTERN, PythonVersion
 from python_agent_tools_docs.matching import MatchTier, match_symbols
 
 if TYPE_CHECKING:
+    from python_agent_tools_docs.catalogs import DocumentationCatalogs
     from python_agent_tools_docs.matching import SymbolMatch
-    from python_agent_tools_docs.services import DocumentationService
 
 DEFAULT_SEARCH_LIMIT = 10
 
@@ -70,7 +70,7 @@ def search_match(match: SymbolMatch) -> SearchMatch:
     )
 
 
-async def run(service: DocumentationService, request: SearchRequest) -> SearchResult:
+async def run(service: DocumentationCatalogs, request: SearchRequest) -> SearchResult:
     catalog = await service.catalog(PythonVersion(text=request.version))
     matches = match_symbols(catalog, request.query, service.settings.fuzzy_score_cutoff)
     return SearchResult(

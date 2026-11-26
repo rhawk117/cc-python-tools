@@ -2,12 +2,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.disk_cache import (
     DATA_DIRECTORY_VARIABLE,
     create_inventory_store,
 )
 from python_agent_tools_docs.domain import PythonVersion, create_python_version
-from python_agent_tools_docs.services import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite

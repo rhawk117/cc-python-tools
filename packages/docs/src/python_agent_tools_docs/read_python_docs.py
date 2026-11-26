@@ -11,9 +11,9 @@ from python_agent_tools_docs.matching import match_symbols
 from python_agent_tools_docs.search_python_docs import Model, VersionText
 
 if TYPE_CHECKING:
+    from python_agent_tools_docs.catalogs import DocumentationCatalogs
     from python_agent_tools_docs.domain import Symbol
     from python_agent_tools_docs.matching import SymbolCatalog
-    from python_agent_tools_docs.services import DocumentationService
     from python_agent_tools_docs.settings import Settings
 
 DEFAULT_PAGE_CHARACTERS = 8_000
@@ -81,7 +81,7 @@ def suggested_names(catalog: SymbolCatalog, symbol: str, settings: Settings) -> 
     return [match.name for match in matches[: settings.suggestion_count]]
 
 
-async def run(service: DocumentationService, request: ReadRequest) -> str:
+async def run(service: DocumentationCatalogs, request: ReadRequest) -> str:
     catalog = await service.catalog(PythonVersion(text=request.version))
     symbol = catalog.index.symbols.get(request.symbol)
     if symbol is None:

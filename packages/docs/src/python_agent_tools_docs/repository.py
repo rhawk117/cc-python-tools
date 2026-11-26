@@ -1,12 +1,11 @@
 """Bounded HTTP retrieval of official pages and inventories, with failures translated."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import anyio
 import httpx2
 
-from python_agent_tools_docs.disk_cache import MemoryInventoryStore
 from python_agent_tools_docs.domain import DocumentationUrl, create_documentation_url
 from python_agent_tools_docs.errors import (
     DownloadTooLargeError,
@@ -18,14 +17,14 @@ from python_agent_tools_docs.errors import (
 from python_agent_tools_docs.extraction import extract_markdown
 from python_agent_tools_docs.inventory import parse_inventory
 from python_agent_tools_docs.matching import catalog_symbols
-from python_agent_tools_docs.progress import ProgressBoard, SilentReporter, VersionProgress
+from python_agent_tools_docs.progress import SilentReporter, VersionProgress
 
 if TYPE_CHECKING:
     from python_agent_tools_docs.disk_cache import InventoryStore
     from python_agent_tools_docs.domain import PythonVersion
     from python_agent_tools_docs.errors import DocumentationError
     from python_agent_tools_docs.matching import SymbolCatalog
-    from python_agent_tools_docs.progress import ProgressReporter
+    from python_agent_tools_docs.progress import ProgressBoard, ProgressReporter
     from python_agent_tools_docs.settings import Settings
     from python_agent_tools_docs.store import CachedLoader
 
@@ -91,8 +90,8 @@ class DocumentationSource:
     downloads: anyio.CapacityLimiter
     parsers: anyio.CapacityLimiter
     settings: Settings
-    store: InventoryStore = field(default_factory=MemoryInventoryStore)
-    board: ProgressBoard = field(default_factory=ProgressBoard)
+    store: InventoryStore
+    board: ProgressBoard
 
     async def fetch(self, url: DocumentationUrl) -> bytes:
         return await self.fetch_reporting(url, SilentReporter())

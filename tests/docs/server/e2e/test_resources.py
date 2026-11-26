@@ -11,14 +11,10 @@ from mcp.types import (
     TextResourceContents,
 )
 from python_agent_tools_docs.completions import RESOURCE_URI
+from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.disk_cache import DATA_DIRECTORY_VARIABLE, create_inventory_store
 from python_agent_tools_docs.project import PROJECT_ROOT_VARIABLE
 from python_agent_tools_docs.server import build_server
-from python_agent_tools_docs.services import (
-    ServiceOptions,
-    build_documentation_service,
-    open_documentation_service,
-)
 from python_agent_tools_docs.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
@@ -39,7 +35,7 @@ async def open_client(
     transport: httpx2.AsyncBaseTransport, environment: Mapping[str, str] | None = None
 ) -> AsyncGenerator[Client]:
     async with (
-        build_documentation_service(Settings(), transport) as service,
+        open_documentation_service(Settings(), ServiceOptions(transport=transport)) as service,
         Client(build_server(service, environment or {})) as client,
     ):
         yield client

@@ -13,6 +13,7 @@ from pydantic import Field
 from python_agent_tools_docs import read_python_docs as read_use_case
 from python_agent_tools_docs import search_python_docs as search_use_case
 from python_agent_tools_docs.completions import RESOURCE_URI, DocumentationCompletions
+from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.disk_cache import create_inventory_store
 from python_agent_tools_docs.domain import create_python_version
 from python_agent_tools_docs.errors import (
@@ -24,11 +25,7 @@ from python_agent_tools_docs.errors import (
 from python_agent_tools_docs.project import resolve_floor
 from python_agent_tools_docs.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
 from python_agent_tools_docs.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
-from python_agent_tools_docs.services import (
-    ServiceOptions,
-    call_deadline,
-    open_documentation_service,
-)
+from python_agent_tools_docs.services import call_deadline
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping
