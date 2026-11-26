@@ -92,7 +92,7 @@ async def run(service: DocumentationCatalogs, request: ReadRequest) -> str:
     symbol = await find_symbol(service, version, request.symbol)
     catalog = await service.catalog(version)
     text = await service.section(symbol)
-    if request.offset > len(text):
+    if request.offset and request.offset >= len(text):
         raise OffsetOutOfRangeError(request.offset, len(text))
     page = SectionPage(
         symbol=symbol,
