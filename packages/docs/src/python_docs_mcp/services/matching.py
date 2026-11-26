@@ -29,6 +29,22 @@ class SymbolMatch:
     match: MatchTier
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MatchOptions:
+    cutoff: float = 80
+    limit: int = 100
+
+    @property
+    def probe_limit(self) -> int:
+        return self.limit + 1
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MatchResult:
+    matches: list[SymbolMatch]
+    truncated: bool = False
+
+
 class SymbolRank(NamedTuple):
     not_exact_match: bool
     not_prefix_match: bool
@@ -101,14 +117,14 @@ def precise_names(catalog: SymbolCatalog, query: str) -> list[str]:
     return sorted(found, key=lambda name: rank_name(name, query=folded))
 
 
-def fuzzy_names(query: str, choices: Mapping[str, str], cutoff: float) -> list[str]:
+def fuzzy_names(query: str, choices: Mapping[str, str], options: MatchOptions) -> list[str]:
     results = process.extract(
         utils.default_process(query),
         choices,
         scorer=fuzz.WRatio,
         processor=None,
-        limit=None,
-        score_cutoff=cutoff,
+        limit=options.probe_limit,
+        score_cutoff=options.cutoff,
     )
     return [name for _, _, name in results]
 
@@ -127,15 +143,15 @@ def scoped_members(catalog: SymbolCatalog, scope: str) -> dict[str, str]:
     return {name: utils.default_process(member) for name, member in members if '.' not in member}
 
 
-def scoped_names(catalog: SymbolCatalog, query: str, cutoff: float) -> list[str]:
+def scoped_names(catalog: SymbolCatalog, query: str, options: MatchOptions) -> list[str]:
     scope = next((scope for scope in dotted_scopes(query) if scope in catalog.namespaces), None)
     if scope is None:
         return []
-    return fuzzy_names(member_text(query, scope), scoped_members(catalog, scope), cutoff)
+    return fuzzy_names(member_text(query, scope), scoped_members(catalog, scope), options)
 
 
-def approximate_names(catalog: SymbolCatalog, query: str, cutoff: float) -> list[str]:
-    return scoped_names(catalog, query, cutoff) or fuzzy_names(query, catalog.fuzzy_keys, cutoff)
+def approximate_names(catalog: SymbolCatalog, query: str, options: MatchOptions) -> list[str]:
+    return scoped_names(catalog, query, options) or fuzzy_names(query, catalog.fuzzy_keys, options)
 
 
 def symbol_match(catalog: SymbolCatalog, name: str, tier: MatchTier) -> SymbolMatch:
@@ -149,10 +165,12 @@ def precise_tier(name: str, query: str) -> MatchTier:
     return MatchTier.PREFIX
 
 
-def match_symbols(catalog: SymbolCatalog, query: str, cutoff: float) -> list[SymbolMatch]:
+def match_symbols(catalog: SymbolCatalog, query: str, options: MatchOptions) -> MatchResult:
     if names := precise_names(catalog, query):
-        return [symbol_match(catalog, name, precise_tier(name, query)) for name in names]
-    return [
-        symbol_match(catalog, name, MatchTier.APPROXIMATE)
-        for name in approximate_names(catalog, query, cutoff)
+        precise = [symbol_match(catalog, name, precise_tier(name, query)) for name in names]
+        return MatchResult(matches=precise)
+    names = approximate_names(catalog, query, options)
+    approximate = [
+        symbol_match(catalog, name, MatchTier.APPROXIMATE) for name in names[: options.limit]
     ]
+    return MatchResult(matches=approximate, truncated=len(names) > options.limit)

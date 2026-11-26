@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     cache_ttl_seconds: CacheTTL = 24 * 60 * 60
     missing_version_ttl_seconds: CacheTTL = 5 * 60
     fuzzy_score_cutoff: MatchScore = 80
+    fuzzy_match_limit: PositiveCount = 100
     suggestion_count: PositiveCount = 3
     download_concurrency: PositiveCount = 4
     parse_concurrency: PositiveCount = 2

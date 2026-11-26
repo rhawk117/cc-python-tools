@@ -8,7 +8,7 @@ from python_agent_tools_core.version import PythonVersion
 
 from python_docs_mcp.core.exception import OffsetOutOfRangeError, UnknownSymbolError
 from python_docs_mcp.schemas import base as schemas
-from python_docs_mcp.services.matching import match_symbols
+from python_docs_mcp.services.matching import MatchOptions, match_symbols
 
 if TYPE_CHECKING:
     from python_docs_mcp.schemas.domain_types import Symbol
@@ -75,8 +75,9 @@ class SectionPage:
 
 
 def suggested_names(catalog: SymbolCatalog, symbol: str, settings: Settings) -> list[str]:
-    matches = match_symbols(catalog, symbol, settings.fuzzy_score_cutoff)
-    return [match.name for match in matches[: settings.suggestion_count]]
+    options = MatchOptions(cutoff=settings.fuzzy_score_cutoff, limit=settings.fuzzy_match_limit)
+    result = match_symbols(catalog, symbol, options)
+    return [match.name for match in result.matches[: settings.suggestion_count]]
 
 
 def find_catalog_symbol(catalog: SymbolCatalog, name: str, settings: Settings) -> Symbol:

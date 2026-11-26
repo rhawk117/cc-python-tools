@@ -27,6 +27,9 @@ SymbolQuery = Annotated[
 TotalMatches = Annotated[
     NonNegativeInt, Field(description='Number of matches before the limit applies.')
 ]
+MatchesTruncated = Annotated[
+    bool, Field(description='True when the fuzzy match cap cut the matches short.')
+]
 SearchLimit = Annotated[
     PositiveInt, Field(le=30, description='Maximum number of matches to return.')
 ]
@@ -50,6 +53,7 @@ class SearchResult(schemas.Model):
     documentation_version: str
     query: str
     total_matches: TotalMatches
+    truncated: MatchesTruncated
     matches: list[SearchMatch]
 
 
@@ -61,11 +65,17 @@ def search_match(match: SymbolMatch) -> SearchMatch:
 
 async def run(service: DocumentationCatalogs, request: SearchRequest) -> SearchResult:
     catalog = await service.catalog(PythonVersion(text=request.version))
-    matches = matching.match_symbols(catalog, request.query, service.settings.fuzzy_score_cutoff)
+    settings = service.settings
+    options = matching.MatchOptions(
+        cutoff=settings.fuzzy_score_cutoff, limit=settings.fuzzy_match_limit
+    )
+    result = matching.match_symbols(catalog, request.query, options)
+    matches = result.matches
     return SearchResult(
         python_version=request.version,
         documentation_version=catalog.index.documentation_version,
         query=request.query,
         total_matches=len(matches),
+        truncated=result.truncated,
         matches=list(map(search_match, matches[: request.limit])),
     )
