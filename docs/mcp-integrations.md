@@ -146,7 +146,7 @@ Source: [mark tools that are safe to call twice](https://code.claude.com/docs/en
   and pass outside it (2026-11-25, as reported by the build session).
 - `${CLAUDE_PLUGIN_ROOT}` resolves in a stdio server's `command`, `args` and `env`.
   `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA` and `CLAUDE_PROJECT_DIR` are exported to the
-  process, and `${user_config.KEY}` substitutes saved values. Use `CLAUDE_PLUGIN_DATA` for
+  process ([plugins reference, "Where each variable resolves"](https://code.claude.com/docs/en/plugins-reference.md#where-each-variable-resolves)), and `${user_config.KEY}` substitutes saved values. Use `CLAUDE_PLUGIN_DATA` for
   state that must survive sessions, and `CLAUDE_PROJECT_DIR` to read the user's project.
 - This repository launches each server with
   `uv run --locked --no-dev --package <member> <script>`, with `UV_PROJECT` set to
@@ -161,6 +161,7 @@ Source: [mark tools that are safe to call twice](https://code.claude.com/docs/en
 In 2.16.2, `AsyncClient` takes `follow_redirects` (default `False`), the default timeout is
 5 seconds for connect, read, write and pool, `MockTransport` is exported for tests, and
 `AsyncHTTPTransport` takes `retries` (default 0) (`httpx2/_client.py`, `httpx2/_config.py`).
+
 **Contradicted:** the default request header is `Accept-Encoding: gzip, deflate, zstd`, not
 `gzip, deflate, br`. It is built from the decoders installed (`ACCEPT_ENCODING`,
 `httpx2/_client.py:108`, used at `:291`), and `uv run python` on 2026-11-25 printed
