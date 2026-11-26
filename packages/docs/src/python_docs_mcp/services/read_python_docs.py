@@ -8,6 +8,7 @@ from python_agent_tools_core.version import PythonVersion
 
 from python_docs_mcp.core.exception import OffsetOutOfRangeError, UnknownSymbolError
 from python_docs_mcp.schemas import base as schemas
+from python_docs_mcp.services.fences import fence_before, scan_fence
 from python_docs_mcp.services.matching import MatchOptions, match_symbols
 
 if TYPE_CHECKING:
@@ -70,8 +71,30 @@ class SectionPage:
             )
         return f'End of section ({total} characters).'
 
+    @property
+    def excerpt(self) -> str:
+        return self.text[self.offset : self.end]
+
+    @property
+    def opening(self) -> str:
+        fence = fence_before(self.text, self.offset)
+        return f'{fence.opening}\n' if fence else ''
+
+    @property
+    def closing(self) -> str:
+        fence = scan_fence(self.excerpt, fence_before(self.text, self.offset))
+        if fence is None:
+            return ''
+
+        separator = '\n' if self.excerpt and not self.excerpt.endswith('\n') else ''
+        return f'{separator}{fence.closing}'
+
+    @property
+    def body(self) -> str:
+        return f'{self.opening}{self.excerpt}{self.closing}'
+
     def render(self) -> str:
-        return '\n\n'.join((self.header, self.text[self.offset : self.end], self.footer))
+        return f'{self.header}\n\n{self.body}\n\n{self.footer}'
 
 
 def suggested_names(catalog: SymbolCatalog, symbol: str, settings: Settings) -> list[str]:
