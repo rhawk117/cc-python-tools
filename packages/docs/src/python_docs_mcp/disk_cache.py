@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, BinaryIO, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Mapping
 
-    from python_docs_mcp.domain import PythonVersion
+    from python_docs_mcp.schemas.domain_types import PythonVersion
 
 DATA_DIRECTORY_VARIABLE = 'CLAUDE_PLUGIN_DATA'
 CACHE_DIRECTORY = 'python-docs-inventories'

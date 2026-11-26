@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urldefrag, urlsplit
 
-from python_docs_mcp.errors import (
+from python_docs_mcp.core.exception import (
     AmbiguousUrlError,
     ForeignUrlError,
     InvalidVersionError,

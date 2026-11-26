@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field, NonNegativeInt, PositiveInt, StringConstraints
 
-from python_docs_mcp import matching, schemas
-from python_docs_mcp.domain import PythonVersion
+from python_docs_mcp import matching
+from python_docs_mcp.schemas import base as schemas
+from python_docs_mcp.schemas.domain_types import PythonVersion
 
 if TYPE_CHECKING:
     from python_docs_mcp.catalogs import DocumentationCatalogs

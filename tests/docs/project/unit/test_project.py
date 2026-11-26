@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from python_docs_mcp.domain import PythonVersion
-from python_docs_mcp.errors import VersionRequiredError
+from python_docs_mcp.core.exception import VersionRequiredError
 from python_docs_mcp.project import (
     PROJECT_ROOT_VARIABLE,
     floor_from_requires_python,
     read_pyproject,
     read_requires_python,
 )
+from python_docs_mcp.schemas.domain_types import PythonVersion
 
 if TYPE_CHECKING:
     from pathlib import Path

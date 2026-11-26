@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import anyio
 import pytest
 from cachetools import TTLCache
-from python_docs_mcp.errors import (
+from python_docs_mcp.core.exception import (
     FillTimeoutError,
     RetrievalFailedError,
     VersionNotPublishedError,
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from anyio.abc import TaskGroup
-    from python_docs_mcp.errors import (
+    from python_docs_mcp.core.exception import (
         DocumentationError,
     )
 

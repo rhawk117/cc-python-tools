@@ -15,8 +15,8 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from python_docs_mcp.domain import PythonVersion, create_python_version
-from python_docs_mcp.errors import CapacityError, InvalidVersionError
+from python_docs_mcp.core.exception import CapacityError, InvalidVersionError
+from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
 
 type PositiveSeconds = Annotated[PositiveFloat, AllowInfNan(allow_inf_nan=False)]
 type NonNegativeSeconds = Annotated[NonNegativeFloat, AllowInfNan(allow_inf_nan=False)]

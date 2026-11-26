@@ -9,9 +9,9 @@ from anyio.lowlevel import checkpoint
 from mcp import Client
 from python_docs_mcp import progress
 from python_docs_mcp.composition import ServiceOptions, open_documentation_service
-from python_docs_mcp.domain import PythonVersion
+from python_docs_mcp.schemas.domain_types import PythonVersion
+from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.server import build_server
-from python_docs_mcp.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, inventory_bytes, standard_pages

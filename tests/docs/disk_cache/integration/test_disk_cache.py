@@ -12,9 +12,9 @@ from python_docs_mcp.disk_cache import (
     DATA_DIRECTORY_VARIABLE,
     create_inventory_store,
 )
-from python_docs_mcp.domain import PythonVersion, create_python_version
+from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
+from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.server import build_server
-from python_docs_mcp.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages

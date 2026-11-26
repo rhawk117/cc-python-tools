@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 
 import httpx2
 
-from python_docs_mcp.domain import DocumentationUrl, create_documentation_url
-from python_docs_mcp.errors import (
+from python_docs_mcp.core.exception import (
     DownloadTooLargeError,
     PageNotFoundError,
     RetrievalFailedError,
@@ -14,14 +13,15 @@ from python_docs_mcp.errors import (
     VersionNotPublishedError,
 )
 from python_docs_mcp.progress import SilentReporter, VersionProgress
+from python_docs_mcp.schemas.domain_types import DocumentationUrl, create_documentation_url
 
 if TYPE_CHECKING:
     import anyio
 
-    from python_docs_mcp.domain import PythonVersion
-    from python_docs_mcp.errors import DocumentationError
+    from python_docs_mcp.core.exception import DocumentationError
     from python_docs_mcp.progress import ProgressBoard, ProgressReporter
-    from python_docs_mcp.settings import Settings
+    from python_docs_mcp.schemas.domain_types import PythonVersion
+    from python_docs_mcp.schemas.settings import Settings
 
 
 def documentation_http_client(

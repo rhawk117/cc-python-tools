@@ -3,9 +3,9 @@
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from python_docs_mcp.domain import PythonVersion, Symbol
     from python_docs_mcp.matching import SymbolCatalog
-    from python_docs_mcp.settings import Settings
+    from python_docs_mcp.schemas.domain_types import PythonVersion, Symbol
+    from python_docs_mcp.schemas.settings import Settings
 
 
 @runtime_checkable

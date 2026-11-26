@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import pytest
-from python_docs_mcp.domain import PythonVersion
-from python_docs_mcp.errors import VersionRequiredError
+from python_docs_mcp.core.exception import VersionRequiredError
 from python_docs_mcp.project import PROJECT_ROOT_VARIABLE, resolve_floor
+from python_docs_mcp.schemas.domain_types import PythonVersion
 
 
 class TestResolveFloor:

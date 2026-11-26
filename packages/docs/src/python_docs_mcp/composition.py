@@ -21,9 +21,9 @@ if TYPE_CHECKING:
     from anyio.abc import TaskGroup
 
     from python_docs_mcp.disk_cache import InventoryStore
-    from python_docs_mcp.domain import DocumentationUrl, PythonVersion
     from python_docs_mcp.matching import SymbolCatalog
-    from python_docs_mcp.settings import Settings
+    from python_docs_mcp.schemas.domain_types import DocumentationUrl, PythonVersion
+    from python_docs_mcp.schemas.settings import Settings
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)

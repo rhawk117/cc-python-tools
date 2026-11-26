@@ -6,14 +6,7 @@ from urllib.parse import urljoin
 
 from sphobjinv import Inventory
 
-from python_docs_mcp.domain import (
-    DocumentationUrl,
-    Symbol,
-    SymbolIndex,
-    ambiguous_url_violation,
-    create_documentation_url,
-)
-from python_docs_mcp.errors import (
+from python_docs_mcp.core.exception import (
     CorruptInventoryError,
     EmptyInventoryError,
     InventoryEntryLimitError,
@@ -22,14 +15,21 @@ from python_docs_mcp.errors import (
     UnparseableInventoryError,
     UnsupportedInventoryError,
 )
+from python_docs_mcp.schemas.domain_types import (
+    DocumentationUrl,
+    Symbol,
+    SymbolIndex,
+    ambiguous_url_violation,
+    create_documentation_url,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     from sphobjinv import DataObjStr
 
-    from python_docs_mcp.domain import PythonVersion
-    from python_docs_mcp.settings import Settings
+    from python_docs_mcp.schemas.domain_types import PythonVersion
+    from python_docs_mcp.schemas.settings import Settings
 
 
 SPHINX_HEADER_LINES = 4

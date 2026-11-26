@@ -2,8 +2,8 @@
 
 import anyio
 
+from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.server import serve
-from python_docs_mcp.settings import Settings
 
 
 def main() -> int:

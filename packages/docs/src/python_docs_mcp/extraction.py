@@ -7,7 +7,7 @@ from urllib.parse import unquote, urljoin
 from bs4 import BeautifulSoup, Tag
 from markdownify import markdownify
 
-from python_docs_mcp.errors import (
+from python_docs_mcp.core.exception import (
     EmptyExtractionError,
     MissingAnchorError,
     MissingDefinitionBodyError,
@@ -15,7 +15,7 @@ from python_docs_mcp.errors import (
 )
 
 if TYPE_CHECKING:
-    from python_docs_mcp.domain import DocumentationUrl
+    from python_docs_mcp.schemas.domain_types import DocumentationUrl
 
 REMOVED_NODES = 'a.headerlink, script, style, nav'
 

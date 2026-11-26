@@ -5,16 +5,16 @@ from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field, NonNegativeInt, StringConstraints
 
-from python_docs_mcp import schemas
-from python_docs_mcp.domain import PythonVersion
-from python_docs_mcp.errors import OffsetOutOfRangeError, UnknownSymbolError
+from python_docs_mcp.core.exception import OffsetOutOfRangeError, UnknownSymbolError
 from python_docs_mcp.matching import match_symbols
+from python_docs_mcp.schemas import base as schemas
+from python_docs_mcp.schemas.domain_types import PythonVersion
 
 if TYPE_CHECKING:
     from python_docs_mcp.catalogs import DocumentationCatalogs
-    from python_docs_mcp.domain import Symbol
     from python_docs_mcp.matching import SymbolCatalog
-    from python_docs_mcp.settings import Settings
+    from python_docs_mcp.schemas.domain_types import Symbol
+    from python_docs_mcp.schemas.settings import Settings
 
 DEFAULT_PAGE_CHARACTERS = 8_000
 

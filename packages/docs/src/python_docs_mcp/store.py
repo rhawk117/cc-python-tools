@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import anyio
 
-from python_docs_mcp.errors import (
+from python_docs_mcp.core.exception import (
     FillInterruptedError,
     FillTimeoutError,
     PermanentMissError,

@@ -10,7 +10,7 @@ from rapidfuzz import fuzz, process, utils
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
-    from python_docs_mcp.domain import DocumentationUrl, SymbolIndex
+    from python_docs_mcp.schemas.domain_types import DocumentationUrl, SymbolIndex
 
 SEGMENT_SEPARATORS = str.maketrans('._', '  ')
 

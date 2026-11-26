@@ -1,16 +1,16 @@
 import pytest
-from python_docs_mcp.domain import (
+from python_docs_mcp.core.exception import (
+    AmbiguousUrlError,
+    ForeignUrlError,
+    InvalidVersionError,
+    UnversionedUrlError,
+)
+from python_docs_mcp.schemas.domain_types import (
     DocumentationUrl,
     PythonVersion,
     ambiguous_url_violation,
     create_documentation_url,
     create_python_version,
-)
-from python_docs_mcp.errors import (
-    AmbiguousUrlError,
-    ForeignUrlError,
-    InvalidVersionError,
-    UnversionedUrlError,
 )
 
 

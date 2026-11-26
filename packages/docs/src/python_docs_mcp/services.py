@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import anyio
 
-from python_docs_mcp.errors import CallDeadlineExceededError
+from python_docs_mcp.core.exception import CallDeadlineExceededError
 from python_docs_mcp.extraction import extract_markdown
 from python_docs_mcp.inventory import parse_inventory
 from python_docs_mcp.matching import catalog_symbols
@@ -17,11 +17,11 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from python_docs_mcp.disk_cache import InventoryStore
-    from python_docs_mcp.domain import DocumentationUrl, PythonVersion, Symbol
     from python_docs_mcp.matching import SymbolCatalog
     from python_docs_mcp.progress import ProgressBoard, ProgressReporter
     from python_docs_mcp.repository import DocumentationSource
-    from python_docs_mcp.settings import Settings
+    from python_docs_mcp.schemas.domain_types import DocumentationUrl, PythonVersion, Symbol
+    from python_docs_mcp.schemas.settings import Settings
     from python_docs_mcp.store import CachedLoader
 
 

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import Version
 
-from python_docs_mcp.domain import PythonVersion, create_python_version
-from python_docs_mcp.errors import InvalidVersionError, VersionRequiredError
+from python_docs_mcp.core.exception import InvalidVersionError, VersionRequiredError
+from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
