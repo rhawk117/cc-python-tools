@@ -7,6 +7,7 @@ import httpx2
 import pytest
 from mcp import Client
 from mcp.types import TextContent
+from python_agent_tools_docs.project import PROJECT_ROOT_VARIABLE
 from python_agent_tools_docs.server import build_server
 from python_agent_tools_docs.services import build_documentation_service
 from python_agent_tools_docs.settings import Settings
@@ -15,7 +16,8 @@ from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Mapping
+    from pathlib import Path
 
     from mcp.types import CallToolResult
 
@@ -30,11 +32,13 @@ async def stalled(request: httpx2.Request) -> httpx2.Response:
 
 @asynccontextmanager
 async def open_client(
-    settings: Settings, transport: httpx2.AsyncBaseTransport
+    settings: Settings,
+    transport: httpx2.AsyncBaseTransport,
+    environment: Mapping[str, str] | None = None,
 ) -> AsyncGenerator[Client]:
     async with (
         build_documentation_service(settings, transport) as service,
-        Client(build_server(service)) as client,
+        Client(build_server(service, environment or {})) as client,
     ):
         yield client
 
@@ -56,6 +60,17 @@ async def client() -> AsyncGenerator[Client]:
 async def stalled_client() -> AsyncGenerator[Client]:
     transport = httpx2.MockTransport(stalled)
     async with open_client(Settings(call_timeout_seconds=0.05), transport) as client:
+        yield client
+
+
+@pytest.fixture
+async def floor_client(tmp_path: Path) -> AsyncGenerator[Client]:
+    tmp_path.joinpath('pyproject.toml').write_text(
+        '[project]\nrequires-python = ">=3.13"\n', encoding='utf-8'
+    )
+    site = DocsSite(pages=standard_pages())
+    environment = {PROJECT_ROOT_VARIABLE: str(tmp_path)}
+    async with open_client(Settings(), site.transport(), environment) as client:
         yield client
 
 
@@ -132,3 +147,31 @@ class TestCalls:
         arguments = {'version': DOCS_VERSION, 'query': 'os.path'}
         result = await stalled_client.call_tool(SEARCH_TOOL, arguments)
         assert (result.is_error, 'deadline' in first_text(result)) == (True, True)
+
+
+class TestVersionDefault:
+    async def test_a_search_without_version_reads_the_project_floor(
+        self, floor_client: Client
+    ) -> None:
+        result = await floor_client.call_tool(SEARCH_TOOL, {'query': 'os.path'})
+        structured = result.structured_content
+        assert structured is not None
+        assert (result.is_error, structured['python_version']) == (False, DOCS_VERSION)
+
+    async def test_a_read_without_version_reads_the_project_floor(
+        self, floor_client: Client
+    ) -> None:
+        result = await floor_client.call_tool(READ_TOOL, {'symbol': 'os.path', 'max_chars': 500})
+        assert first_text(result).startswith('os.path (module) | Python 3.13')
+
+    async def test_an_explicit_version_wins_over_the_floor(self, floor_client: Client) -> None:
+        arguments = {'version': '3.9', 'symbol': 'os.path'}
+        result = await floor_client.call_tool(READ_TOOL, arguments)
+        assert (result.is_error, '3.13' in first_text(result)) == (True, False)
+
+    @pytest.mark.parametrize('tool', [SEARCH_TOOL, READ_TOOL])
+    async def test_no_floor_is_a_tool_error_asking_for_version(
+        self, client: Client, tool: str
+    ) -> None:
+        result = await client.call_tool(tool, {'query': 'os.path', 'symbol': 'os.path'})
+        assert (result.is_error, 'Pass version' in first_text(result)) == (True, True)

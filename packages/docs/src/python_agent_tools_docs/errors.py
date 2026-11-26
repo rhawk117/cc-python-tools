@@ -151,3 +151,11 @@ class OffsetOutOfRangeError(DocumentationError):
 class CapacityError(DocumentationToolsError, ValueError):
     def __init__(self, larger: str, smaller: str) -> None:
         super().__init__(f'{larger} must be at least {smaller}')
+
+
+class VersionRequiredError(DocumentationToolsError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(
+            'Pass version, a Python minor version such as 3.13:'
+            f' no default was found because {reason}.'
+        )
