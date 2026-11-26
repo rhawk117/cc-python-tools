@@ -123,12 +123,14 @@ class ServiceOptions:
 async def open_documentation_service(
     settings: Settings, options: ServiceOptions
 ) -> AsyncGenerator[DocumentationService]:
-    async with (
-        documentation_http_client(settings, options.transport) as client,
-        anyio.create_task_group() as fills,
-    ):
-        environment = LoaderEnvironment(
-            fills=fills, settings=settings, store=options.store, timer=options.timer
-        )
-        yield compose_service(client, environment)
-        fills.cancel_scope.cancel()
+    client = documentation_http_client(settings, options.transport)
+    try:
+        async with anyio.create_task_group() as fills:
+            environment = LoaderEnvironment(
+                fills=fills, settings=settings, store=options.store, timer=options.timer
+            )
+            yield compose_service(client, environment)
+            fills.cancel_scope.cancel()
+    finally:
+        with anyio.move_on_after(settings.shutdown_timeout_seconds, shield=True):
+            await client.aclose()

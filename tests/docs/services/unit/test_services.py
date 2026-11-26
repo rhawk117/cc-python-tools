@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import anyio
+import httpx2
 import pytest
 from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
 from python_agent_tools_docs.disk_cache import NullInventoryStore
@@ -180,6 +181,25 @@ class TestSection:
         first = await harness.service.section(symbol)
         second = await harness.service.section(symbol)
         assert (first == second, harness.site.request_count(PAGE_PATH)) == (True, 1)
+
+
+class HangingClose(httpx2.AsyncBaseTransport):
+    @override
+    async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(httpx2.codes.OK, request=request)
+
+    @override
+    async def aclose(self) -> None:
+        await anyio.sleep_forever()
+
+
+class TestShutdown:
+    async def test_a_hanging_client_close_is_abandoned_after_the_shutdown_timeout(self) -> None:
+        options = ServiceOptions(transport=HangingClose(), store=NullInventoryStore())
+        settings = Settings(shutdown_timeout_seconds=0.05)
+        with anyio.fail_after(2):
+            async with open_documentation_service(settings, options):
+                pass
 
 
 class TestCallDeadline:

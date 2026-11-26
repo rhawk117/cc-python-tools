@@ -165,6 +165,25 @@ class TestUnusableDataDirectory:
         cache_directory = tmp_path.joinpath(CACHE_DIRECTORY)
         assert list(cache_directory.iterdir()) == []
 
+    def test_a_failing_handle_open_closes_the_descriptor_and_leaves_no_temporary_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        store = self.store_for(tmp_path)
+        opened: list[int] = []
+
+        def failing_open(descriptor: int, mode: str) -> BytesIO:
+            assert mode == 'wb'
+            opened.append(descriptor)
+            message = 'open failed'
+            raise OSError(message)
+
+        monkeypatch.setattr(os, 'fdopen', failing_open)
+        store.write(self.version, self.content)
+        assert len(opened) == 1
+        with pytest.raises(OSError, match='Bad file descriptor'):
+            os.fstat(opened[0])
+        assert list(tmp_path.joinpath(CACHE_DIRECTORY).iterdir()) == []
+
     def test_an_unreadable_entry_is_a_miss(self, tmp_path: Path) -> None:
         store = self.store_for(tmp_path)
         cache_directory = tmp_path.joinpath(CACHE_DIRECTORY)

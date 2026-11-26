@@ -83,6 +83,9 @@ class TestPythonVersion:
     def test_base_url_is_the_versioned_root(self) -> None:
         assert PythonVersion(text='3.13').base_url == 'https://docs.python.org/3.13/'
 
+    def test_minor_is_the_number_after_the_major(self) -> None:
+        assert PythonVersion(text='3.13').minor == 13
+
 
 class TestDocumentationUrl:
     page = 'https://docs.python.org/3.13/library/os.html#os.getcwd'

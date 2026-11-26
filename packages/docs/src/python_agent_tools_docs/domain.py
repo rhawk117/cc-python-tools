@@ -74,6 +74,10 @@ class PythonVersion:
     def base_url(self) -> str:
         return f'https://{DOCUMENTATION_HOST}/{self.text}/'
 
+    @property
+    def minor(self) -> int:
+        return int(self.text.removeprefix('3.'))
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DocumentationUrl:

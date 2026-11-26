@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from mcp.types import Completion, ResourceTemplateReference
 
-from python_agent_tools_docs.domain import create_python_version
+from python_agent_tools_docs.domain import PythonVersion, create_python_version
 from python_agent_tools_docs.errors import (
     DocumentationToolsError,
     InvalidVersionError,
@@ -27,13 +27,9 @@ VERSION_ARGUMENT = 'version'
 SYMBOL_ARGUMENT = 'symbol'
 
 
-def minor_of(version_text: str) -> int:
-    return int(version_text.removeprefix('3.'))
-
-
 def version_window(settings: Settings) -> list[str]:
-    first = minor_of(settings.completion_floor_version)
-    last = minor_of(settings.completion_ceiling_version)
+    first = PythonVersion(text=settings.completion_floor_version).minor
+    last = PythonVersion(text=settings.completion_ceiling_version).minor
     return [f'3.{minor}' for minor in range(first, last + 1)]
 
 

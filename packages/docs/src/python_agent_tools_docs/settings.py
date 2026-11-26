@@ -37,10 +37,6 @@ CAPACITY_RULES = (
 )
 
 
-def minor_of(version: PythonVersion) -> int:
-    return int(version.text.removeprefix('3.'))
-
-
 class Settings(BaseSettings):
     """Environment overrides use PYTHON_DOCS_<FIELD_NAME>; sizes are bytes."""
 
@@ -91,7 +87,7 @@ class Settings(BaseSettings):
     def validate_completion_window(self) -> Self:
         floor = PythonVersion(text=self.completion_floor_version)
         ceiling = PythonVersion(text=self.completion_ceiling_version)
-        if minor_of(floor) > minor_of(ceiling):
+        if floor.minor > ceiling.minor:
             larger = 'completion_ceiling_version'
             raise CapacityError(larger, 'completion_floor_version')
         return self

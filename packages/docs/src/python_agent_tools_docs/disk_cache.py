@@ -7,7 +7,7 @@ from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, BinaryIO, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Mapping
@@ -81,11 +81,21 @@ def removed_on_error(path: Path) -> Generator[None]:
         raise
 
 
+def open_descriptor(descriptor: int) -> BinaryIO:
+    try:
+        return os.fdopen(descriptor, 'wb')
+    except OSError:
+        os.close(descriptor)
+        raise
+
+
 def replace_atomically(target: Path, content: bytes) -> None:
     descriptor, name = tempfile.mkstemp(dir=target.parent)
     temporary = Path(name)
-    with removed_on_error(temporary), os.fdopen(descriptor, 'wb') as handle:
-        handle.write(content)
+    with removed_on_error(temporary):
+        handle = open_descriptor(descriptor)
+        with handle:
+            handle.write(content)
     with removed_on_error(temporary):
         temporary.replace(target)
 
