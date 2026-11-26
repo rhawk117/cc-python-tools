@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from mcp import Client
-from python_docs_mcp.composition import ServiceOptions, open_documentation_service
+from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
 from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.server import build_server

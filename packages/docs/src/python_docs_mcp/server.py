@@ -10,12 +10,12 @@ from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from python_docs_mcp.composition import ServiceOptions, open_documentation_service
 from python_docs_mcp.core.exception import (
     DocumentationToolsError,
     InvalidVersionError,
     VersionRequiredError,
 )
+from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
 from python_docs_mcp.project import resolve_floor
 from python_docs_mcp.schemas.base import VersionText
 from python_docs_mcp.schemas.domain_types import create_python_version

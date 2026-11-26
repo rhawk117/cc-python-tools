@@ -7,7 +7,7 @@ import httpx2
 import pytest
 from mcp import Client
 from mcp.types import TextContent
-from python_docs_mcp.composition import ServiceOptions, open_documentation_service
+from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
 from python_docs_mcp.project import PROJECT_ROOT_VARIABLE
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.server import build_server

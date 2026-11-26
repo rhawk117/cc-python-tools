@@ -1,8 +1,6 @@
-"""The edge that builds the HTTP client, task group, caches and loaders behind the service."""
+"""Build the caches, loaders and documentation service from settings and a client."""
 
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from time import monotonic
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import anyio
@@ -14,12 +12,11 @@ from python_docs_mcp.services.documentation_service import (
     DocumentationService,
     SectionLoader,
 )
-from python_docs_mcp.stores.disk_cache import NullInventoryStore
-from python_docs_mcp.stores.repository import DocumentationSource, documentation_http_client
+from python_docs_mcp.stores.repository import DocumentationSource
 from python_docs_mcp.stores.store import CachedLoader
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Awaitable, Callable, Hashable
+    from collections.abc import Awaitable, Callable, Hashable
 
     import httpx2
     from anyio.abc import TaskGroup
@@ -114,27 +111,3 @@ def compose_service(
         loader=loader,
         board=board,
     )
-
-
-@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
-class ServiceOptions:
-    transport: httpx2.AsyncBaseTransport | None = None
-    timer: Callable[[], float] = monotonic
-    store: InventoryStore = field(default_factory=NullInventoryStore)
-
-
-@asynccontextmanager
-async def open_documentation_service(
-    settings: Settings, options: ServiceOptions
-) -> AsyncGenerator[DocumentationService]:
-    client = documentation_http_client(settings, options.transport)
-    try:
-        async with anyio.create_task_group() as fills:
-            environment = LoaderEnvironment(
-                fills=fills, settings=settings, store=options.store, timer=options.timer
-            )
-            yield compose_service(client, environment)
-            fills.cancel_scope.cancel()
-    finally:
-        with anyio.move_on_after(settings.shutdown_timeout_seconds, shield=True):
-            await client.aclose()

@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, override
 import anyio
 import httpx2
 import pytest
-from python_docs_mcp.composition import ServiceOptions, open_documentation_service
 from python_docs_mcp.core.exception import CallDeadlineExceededError, VersionNotPublishedError
+from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
 from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.services.documentation_service import call_deadline
