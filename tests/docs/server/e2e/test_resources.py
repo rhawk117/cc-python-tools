@@ -142,7 +142,7 @@ class TestPaging:
         assert f'read {self.uri}?offset=' in text.splitlines()[-1]
 
     async def test_an_offset_past_the_section_end_is_a_resource_error(self, client: Client) -> None:
-        with pytest.raises(MCPError, match='exceeds the section length'):
+        with pytest.raises(MCPError, match='past the end of the section'):
             await client.read_resource(f'{self.uri}?offset=1000000')
 
     async def test_a_malformed_offset_is_a_resource_error_without_raw_validation_text(

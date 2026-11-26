@@ -190,7 +190,7 @@ def message_cases() -> pytest.MarkDecorator:
         MessageScenario(
             name='OffsetOutOfRangeError',
             error=OffsetOutOfRangeError(50, 10),
-            message='Offset 50 exceeds the section length (10).',
+            message='Offset 50 is at or past the end of the section (10 characters).',
         ),
         MessageScenario(
             name='CapacityError',

@@ -142,7 +142,9 @@ class UnknownSymbolError(DocumentationError):
 
 class OffsetOutOfRangeError(DocumentationError):
     def __init__(self, offset: int, length: int) -> None:
-        super().__init__(f'Offset {offset} exceeds the section length ({length}).')
+        super().__init__(
+            f'Offset {offset} is at or past the end of the section ({length} characters).'
+        )
 
 
 class CapacityError(DocumentationToolsError, ValueError):

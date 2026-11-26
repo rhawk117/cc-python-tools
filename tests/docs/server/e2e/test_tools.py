@@ -145,7 +145,10 @@ class TestCalls:
     ) -> None:
         arguments = {'version': DOCS_VERSION, 'symbol': 'os.path.isfile', 'offset': 1_000_000}
         result = await client.call_tool(READ_TOOL, arguments)
-        assert (result.is_error, 'exceeds the section length' in first_text(result)) == (True, True)
+        assert (result.is_error, 'past the end of the section' in first_text(result)) == (
+            True,
+            True,
+        )
 
     async def test_a_call_past_its_deadline_is_a_tool_error(self, stalled_client: Client) -> None:
         arguments = {'version': DOCS_VERSION, 'query': 'os.path'}
