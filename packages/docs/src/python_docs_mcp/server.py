@@ -47,8 +47,8 @@ SERVER_INSTRUCTIONS = (
 )
 READ_ONLY_REMOTE = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)
 
-type OptionalVersionText = Annotated[
-    VersionText | None,
+ProjectVersionText = Annotated[
+    VersionText,
     Field(
         description=(
             'Python minor version such as 3.13.\n\n'
@@ -132,7 +132,7 @@ class DocumentationTools:
     async def search_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schema from these keyword parameters
         self,
         *,
-        version: OptionalVersionText = None,
+        version: ProjectVersionText | None = None,
         query: search_use_case.SymbolQuery,
         limit: search_use_case.SearchLimit = DEFAULT_SEARCH_LIMIT,
         service: ToolServiceDep,
@@ -149,7 +149,7 @@ class DocumentationTools:
     async def read_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schema from these keyword parameters
         self,
         *,
-        version: OptionalVersionText = None,
+        version: ProjectVersionText | None = None,
         symbol: read_use_case.SymbolName,
         offset: read_use_case.PageOffset = 0,
         max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS,

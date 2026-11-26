@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 DEFAULT_SEARCH_LIMIT = 10
 
-type SymbolQuery = Annotated[
+SymbolQuery = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=200),
     Field(
@@ -24,10 +24,10 @@ type SymbolQuery = Annotated[
         )
     ),
 ]
-type TotalMatches = Annotated[
+TotalMatches = Annotated[
     NonNegativeInt, Field(description='Number of matches before the limit applies.')
 ]
-type SearchLimit = Annotated[
+SearchLimit = Annotated[
     PositiveInt, Field(le=30, description='Maximum number of matches to return.')
 ]
 

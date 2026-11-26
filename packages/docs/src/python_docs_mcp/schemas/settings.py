@@ -19,13 +19,13 @@ from python_agent_tools_core.version import PythonVersion, create_python_version
 
 from python_docs_mcp.core.exception import CapacityError
 
-type PositiveSeconds = Annotated[PositiveFloat, AllowInfNan(allow_inf_nan=False)]
-type NonNegativeSeconds = Annotated[NonNegativeFloat, AllowInfNan(allow_inf_nan=False)]
-type CacheTTL = Annotated[PositiveSeconds, Field(le=24 * 60 * 60)]
-type MatchScore = Annotated[float, Field(ge=0, le=100)]
-type Ratio = Annotated[float, Field(ge=0, le=1)]
-type PositiveCount = Annotated[int, Field(gt=0)]
-type NonNegativeCount = Annotated[int, Field(ge=0)]
+PositiveSeconds = Annotated[PositiveFloat, AllowInfNan(allow_inf_nan=False)]
+NonNegativeSeconds = Annotated[NonNegativeFloat, AllowInfNan(allow_inf_nan=False)]
+CacheTTL = Annotated[PositiveSeconds, Field(le=24 * 60 * 60)]
+MatchScore = Annotated[float, Field(ge=0, le=100)]
+Ratio = Annotated[float, Field(ge=0, le=1)]
+PositiveCount = Annotated[int, Field(gt=0)]
+NonNegativeCount = Annotated[int, Field(ge=0)]
 
 
 class CapacityRule(NamedTuple):

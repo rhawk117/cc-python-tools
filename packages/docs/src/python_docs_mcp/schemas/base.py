@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from python_agent_tools_core.version import VERSION_PATTERN
 
-type VersionText = Annotated[
+VersionText = Annotated[
     str,
     StringConstraints(strict=True, pattern=f'^{VERSION_PATTERN}$'),
     Field(
@@ -15,7 +15,7 @@ type VersionText = Annotated[
         )
     ),
 ]
-type SourceUrl = Annotated[str, Field(description='An official, versioned docs.python.org URL.')]
+SourceUrl = Annotated[str, Field(description='An official, versioned docs.python.org URL.')]
 
 
 class Model(BaseModel):

@@ -18,16 +18,16 @@ if TYPE_CHECKING:
 
 DEFAULT_PAGE_CHARACTERS = 8_000
 
-type SymbolName = Annotated[
+SymbolName = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=300),
     Field(description='Exact symbol name from search_python_docs, such as os.path.join.'),
 ]
-type PageOffset = Annotated[
+PageOffset = Annotated[
     NonNegativeInt,
     Field(description='Character offset to continue from, as given by a page footer.'),
 ]
-type PageCharacters = Annotated[
+PageCharacters = Annotated[
     int,
     Field(ge=500, le=12_000, description='Maximum documentation characters to return.'),
 ]

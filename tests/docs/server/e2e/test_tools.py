@@ -95,7 +95,7 @@ class TestListing:
         listed = await client.list_tools()
         search = next(tool for tool in listed.tools if tool.name == SEARCH_TOOL)
         schema = search.input_schema
-        bound = schema['$defs']['SearchLimit']['maximum']
+        bound = schema['properties']['limit']['maximum']
         default = schema['properties']['limit']['default']
         assert (bound, default) == (30, 10)
 
@@ -183,6 +183,21 @@ class TestCalls:
 
 
 class TestVersionDefault:
+    async def test_the_version_input_is_optional_with_its_description_and_pattern(
+        self, client: Client
+    ) -> None:
+        listed = await client.list_tools()
+        for tool in listed.tools:
+            version = tool.input_schema['properties']['version']
+            variants = version.get('anyOf', [version])
+            text = next(variant for variant in variants if variant.get('type') == 'string')
+            assert (
+                'version' in tool.input_schema.get('required', []),
+                {'type': 'null'} in variants,
+                'lower bound of the project' in text['description'],
+                text['pattern'].startswith('^'),
+            ) == (False, True, True, True), tool.name
+
     async def test_a_search_without_version_reads_the_project_floor(
         self, floor_client: Client
     ) -> None:
