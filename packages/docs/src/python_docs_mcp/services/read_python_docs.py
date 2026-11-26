@@ -79,18 +79,22 @@ def suggested_names(catalog: SymbolCatalog, symbol: str, settings: Settings) -> 
     return [match.name for match in matches[: settings.suggestion_count]]
 
 
-async def find_symbol(service: DocumentationCatalogs, version: PythonVersion, name: str) -> Symbol:
-    catalog = await service.catalog(version)
+def find_catalog_symbol(catalog: SymbolCatalog, name: str, settings: Settings) -> Symbol:
     symbol = catalog.index.symbols.get(name)
     if symbol is None:
-        raise UnknownSymbolError(name, suggested_names(catalog, name, service.settings))
+        raise UnknownSymbolError(name, suggested_names(catalog, name, settings))
     return symbol
+
+
+async def find_symbol(service: DocumentationCatalogs, version: PythonVersion, name: str) -> Symbol:
+    catalog = await service.catalog(version)
+    return find_catalog_symbol(catalog, name, service.settings)
 
 
 async def run(service: DocumentationCatalogs, request: ReadRequest) -> str:
     version = PythonVersion(text=request.version)
-    symbol = await find_symbol(service, version, request.symbol)
     catalog = await service.catalog(version)
+    symbol = find_catalog_symbol(catalog, request.symbol, service.settings)
     text = await service.section(symbol)
     if request.offset and request.offset >= len(text):
         raise OffsetOutOfRangeError(request.offset, len(text))

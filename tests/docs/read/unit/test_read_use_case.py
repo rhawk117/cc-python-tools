@@ -1,5 +1,5 @@
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import pytest
@@ -25,8 +25,10 @@ class FakeCatalogs:
     catalogs: dict[str, SymbolCatalog]
     sections: dict[str, str]
     settings: Settings
+    awaited_versions: list[str] = field(default_factory=list)
 
     async def catalog(self, version: PythonVersion) -> SymbolCatalog:
+        self.awaited_versions.append(version.text)
         return self.catalogs[version.text]
 
     async def section(self, symbol: Symbol) -> str:
@@ -59,6 +61,10 @@ class TestRun:
         assert page.splitlines()[0].startswith('os.path.join (function) | Python 3.13')
         assert SECTION_TEXT in page
         assert page.endswith(f'End of section ({len(SECTION_TEXT)} characters).')
+
+    async def test_a_read_awaits_the_catalog_exactly_once(self, catalogs: FakeCatalogs) -> None:
+        await run(catalogs, read_request('os.path.join'))
+        assert catalogs.awaited_versions == ['3.13']
 
     async def test_an_unknown_symbol_raises_with_suggestions(self, catalogs: FakeCatalogs) -> None:
         with pytest.raises(UnknownSymbolError):
