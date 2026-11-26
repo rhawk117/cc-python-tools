@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from python_docs_mcp.schemas.domain_types import PythonVersion
+    from python_agent_tools_core.version import PythonVersion
 
 logger = logging.getLogger(__name__)
 

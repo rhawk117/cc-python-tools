@@ -3,8 +3,7 @@
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-
-from python_docs_mcp.schemas.domain_types import VERSION_PATTERN
+from python_agent_tools_core.version import VERSION_PATTERN
 
 type VersionText = Annotated[
     str,

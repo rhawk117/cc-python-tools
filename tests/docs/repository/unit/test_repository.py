@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import anyio
 import httpx2
 import pytest
+from python_agent_tools_core.version import PythonVersion, create_python_version
 from python_docs_mcp.adapters.progress import ProgressBoard
 from python_docs_mcp.core.exception import (
     DownloadTooLargeError,
@@ -11,12 +12,7 @@ from python_docs_mcp.core.exception import (
     UpstreamStatusError,
     VersionNotPublishedError,
 )
-from python_docs_mcp.schemas.domain_types import (
-    DocumentationUrl,
-    PythonVersion,
-    create_documentation_url,
-    create_python_version,
-)
+from python_docs_mcp.schemas.domain_types import DocumentationUrl, create_documentation_url
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.stores.repository import (
     DocumentationSource,

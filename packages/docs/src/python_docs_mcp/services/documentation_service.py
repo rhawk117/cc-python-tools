@@ -16,8 +16,10 @@ from python_docs_mcp.stores.store import FillSucceeded
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from python_agent_tools_core.version import PythonVersion
+
     from python_docs_mcp.adapters.progress import ProgressBoard, ProgressReporter
-    from python_docs_mcp.schemas.domain_types import DocumentationUrl, PythonVersion, Symbol
+    from python_docs_mcp.schemas.domain_types import DocumentationUrl, Symbol
     from python_docs_mcp.schemas.settings import Settings
     from python_docs_mcp.services.matching import SymbolCatalog
     from python_docs_mcp.stores.disk_cache import InventoryStore

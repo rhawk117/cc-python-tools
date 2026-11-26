@@ -9,7 +9,7 @@ from python_docs_mcp.services.matching import catalog_symbols
 from python_docs_mcp.services.read_python_docs import ReadRequest, run
 
 if TYPE_CHECKING:
-    from python_docs_mcp.schemas.domain_types import PythonVersion
+    from python_agent_tools_core.version import PythonVersion
     from python_docs_mcp.services.matching import SymbolCatalog
 
 SOURCE_URL = DocumentationUrl(text='https://docs.python.org/3.13/library/os.path.html#os.path.join')

@@ -4,23 +4,15 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urldefrag, urlsplit
 
+from python_agent_tools_core.version import DOCUMENTATION_HOST, VERSION_PATTERN, PythonVersion
+
 from python_docs_mcp.core.exception import (
     AmbiguousUrlError,
     ForeignUrlError,
-    InvalidVersionError,
     UnversionedUrlError,
 )
 
-DOCUMENTATION_HOST = 'docs.python.org'
-VERSION_PATTERN = r'3\.(0|[1-9][0-9]?)'
-
 type UrlViolation = AmbiguousUrlError | ForeignUrlError | UnversionedUrlError
-
-
-def python_version_violation(text: str) -> InvalidVersionError | None:
-    if re.fullmatch(VERSION_PATTERN, text) is None:
-        return InvalidVersionError(text)
-    return None
 
 
 def has_unsafe_characters(url: str) -> bool:
@@ -67,19 +59,6 @@ def documentation_url_violation(url: str) -> UrlViolation | None:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class PythonVersion:
-    text: str
-
-    @property
-    def base_url(self) -> str:
-        return f'https://{DOCUMENTATION_HOST}/{self.text}/'
-
-    @property
-    def minor(self) -> int:
-        return int(self.text.removeprefix('3.'))
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
 class DocumentationUrl:
     text: str
 
@@ -102,10 +81,6 @@ class DocumentationUrl:
     @property
     def page_url(self) -> DocumentationUrl:
         return DocumentationUrl(text=urldefrag(self.text).url)
-
-
-def create_python_version(text: str) -> PythonVersion | InvalidVersionError:
-    return python_version_violation(text) or PythonVersion(text=text)
 
 
 def create_documentation_url(text: str) -> DocumentationUrl | UrlViolation:

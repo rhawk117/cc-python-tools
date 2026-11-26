@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from mcp import Client
+from python_agent_tools_core.version import PythonVersion, create_python_version
 from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
-from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.server import build_server
 from python_docs_mcp.stores.disk_cache import (

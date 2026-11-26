@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field, NonNegativeInt, StringConstraints
+from python_agent_tools_core.version import PythonVersion
 
 from python_docs_mcp.core.exception import OffsetOutOfRangeError, UnknownSymbolError
 from python_docs_mcp.schemas import base as schemas
-from python_docs_mcp.schemas.domain_types import PythonVersion
 from python_docs_mcp.services.matching import match_symbols
 
 if TYPE_CHECKING:

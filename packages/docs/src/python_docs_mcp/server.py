@@ -9,16 +9,16 @@ from mcp.server import mcpserver
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
-
-from python_docs_mcp.core.exception import (
-    DocumentationToolsError,
+from python_agent_tools_core.exception import (
     InvalidVersionError,
+    PythonAgentToolsError,
     VersionRequiredError,
 )
+from python_agent_tools_core.project import resolve_floor
+from python_agent_tools_core.version import create_python_version
+
 from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
-from python_docs_mcp.project import resolve_floor
 from python_docs_mcp.schemas.base import VersionText
-from python_docs_mcp.schemas.domain_types import create_python_version
 from python_docs_mcp.services import read_python_docs as read_use_case
 from python_docs_mcp.services import search_python_docs as search_use_case
 from python_docs_mcp.services.completions import RESOURCE_URI, DocumentationCompletions
@@ -56,7 +56,7 @@ type OptionalVersionText = Annotated[
 def tool_errors() -> Generator[None]:
     try:
         yield
-    except DocumentationToolsError as error:
+    except PythonAgentToolsError as error:
         raise ToolError(str(error)) from error
 
 
@@ -64,7 +64,7 @@ def tool_errors() -> Generator[None]:
 def resource_errors() -> Generator[None]:
     try:
         yield
-    except DocumentationToolsError as error:
+    except PythonAgentToolsError as error:
         raise ResourceError(str(error)) from error
 
 

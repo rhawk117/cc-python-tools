@@ -3,6 +3,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from python_agent_tools_core.exception import (
+    InvalidVersionError,
+    VersionRequiredError,
+)
 from python_docs_mcp.core import exception as errors
 from python_docs_mcp.core.exception import (
     AmbiguousUrlError,
@@ -17,7 +21,6 @@ from python_docs_mcp.core.exception import (
     FillInterruptedError,
     FillTimeoutError,
     ForeignUrlError,
-    InvalidVersionError,
     InventoryEntryLimitError,
     InventoryTooLargeError,
     MalformedInventoryError,
@@ -34,17 +37,17 @@ from python_docs_mcp.core.exception import (
     UnversionedUrlError,
     UpstreamStatusError,
     VersionNotPublishedError,
-    VersionRequiredError,
 )
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
+    from python_agent_tools_core.exception import PythonAgentToolsError
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class MessageScenario:
     name: str
-    error: DocumentationToolsError
+    error: PythonAgentToolsError
     message: str
 
     @property
@@ -230,7 +233,7 @@ class TestErrors:
         assert issubclass(error_class, DocumentationToolsError)
 
     def test_every_source_error_class_exists(self) -> None:
-        assert len(error_classes()) == 29
+        assert len(error_classes()) == 27
 
     def test_permanent_miss_is_a_documentation_error(self) -> None:
         assert issubclass(VersionNotPublishedError, PermanentMissError)

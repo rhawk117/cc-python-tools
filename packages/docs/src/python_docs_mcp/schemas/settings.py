@@ -14,9 +14,10 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from python_agent_tools_core.exception import InvalidVersionError
+from python_agent_tools_core.version import PythonVersion, create_python_version
 
-from python_docs_mcp.core.exception import CapacityError, InvalidVersionError
-from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
+from python_docs_mcp.core.exception import CapacityError
 
 type PositiveSeconds = Annotated[PositiveFloat, AllowInfNan(allow_inf_nan=False)]
 type NonNegativeSeconds = Annotated[NonNegativeFloat, AllowInfNan(allow_inf_nan=False)]

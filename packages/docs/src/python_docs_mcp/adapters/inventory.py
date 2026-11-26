@@ -26,9 +26,9 @@ from python_docs_mcp.schemas.domain_types import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+    from python_agent_tools_core.version import PythonVersion
     from sphobjinv import DataObjStr
 
-    from python_docs_mcp.schemas.domain_types import PythonVersion
     from python_docs_mcp.schemas.settings import Settings
 
 

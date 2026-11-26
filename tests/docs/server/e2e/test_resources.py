@@ -11,8 +11,8 @@ from mcp.types import (
     TextContent,
     TextResourceContents,
 )
+from python_agent_tools_core.project import PROJECT_ROOT_VARIABLE
 from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
-from python_docs_mcp.project import PROJECT_ROOT_VARIABLE
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.server import build_server
 from python_docs_mcp.services.completions import RESOURCE_URI
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import httpx2
-    from python_docs_mcp.schemas.domain_types import PythonVersion
+    from python_agent_tools_core.version import PythonVersion
 
 READ_TOOL = 'read_python_docs'
 TEMPLATE = ResourceTemplateReference(uri=RESOURCE_URI)

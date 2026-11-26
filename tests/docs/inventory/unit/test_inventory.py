@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from python_agent_tools_core.version import PythonVersion
 from python_docs_mcp.adapters.inventory import parse_inventory
 from python_docs_mcp.core.exception import (
     CorruptInventoryError,
@@ -14,7 +15,6 @@ from python_docs_mcp.core.exception import (
     MalformedInventoryError,
     UnsupportedInventoryError,
 )
-from python_docs_mcp.schemas.domain_types import PythonVersion
 from python_docs_mcp.schemas.settings import Settings
 
 from tests.docs.support.samples import (

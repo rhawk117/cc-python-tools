@@ -4,14 +4,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from mcp.types import Completion, ResourceTemplateReference
-
-from python_docs_mcp.core.exception import (
-    DocumentationToolsError,
+from python_agent_tools_core.exception import (
     InvalidVersionError,
+    PythonAgentToolsError,
     VersionRequiredError,
 )
-from python_docs_mcp.project import resolve_floor
-from python_docs_mcp.schemas.domain_types import PythonVersion, create_python_version
+from python_agent_tools_core.project import resolve_floor
+from python_agent_tools_core.version import PythonVersion, create_python_version
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -69,7 +68,7 @@ class DocumentationCompletions:
 
         try:
             catalog = await self.service.stored_catalog(version)
-        except DocumentationToolsError:
+        except PythonAgentToolsError:
             return []
 
         if catalog is None:
