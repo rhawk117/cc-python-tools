@@ -19,11 +19,11 @@ from python_agent_tools_docs.domain import create_python_version
 from python_agent_tools_docs.errors import (
     DocumentationToolsError,
     InvalidVersionError,
-    UnknownSymbolError,
     VersionRequiredError,
 )
 from python_agent_tools_docs.project import resolve_floor
 from python_agent_tools_docs.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
+from python_agent_tools_docs.schemas import VersionText
 from python_agent_tools_docs.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
 from python_agent_tools_docs.services import call_deadline
 
@@ -41,7 +41,7 @@ SERVER_INSTRUCTIONS = (
 READ_ONLY_REMOTE = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)
 
 type OptionalVersionText = Annotated[
-    search_use_case.VersionText | None,
+    VersionText | None,
     Field(
         description=(
             'Python minor version such as 3.13.\n\n'
@@ -139,12 +139,7 @@ class DocumentationTools:
             if isinstance(created, InvalidVersionError):
                 raise created
 
-            catalog = await self.service.catalog(created)
-            found = catalog.index.symbols.get(symbol)
-            if found is None:
-                suggestions = read_use_case.suggested_names(catalog, symbol, self.service.settings)
-                raise UnknownSymbolError(symbol, suggestions)
-
+            found = await read_use_case.find_symbol(self.service, created, symbol)
             return await self.service.section(found)
 
 

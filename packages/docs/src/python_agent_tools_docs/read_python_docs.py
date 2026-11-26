@@ -3,12 +3,12 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated
 
-from pydantic import BaseModel, Field, NonNegativeInt, StringConstraints
+from pydantic import Field, NonNegativeInt, StringConstraints
 
+from python_agent_tools_docs import schemas
 from python_agent_tools_docs.domain import PythonVersion
 from python_agent_tools_docs.errors import OffsetOutOfRangeError, UnknownSymbolError
 from python_agent_tools_docs.matching import match_symbols
-from python_agent_tools_docs.search_python_docs import Model, VersionText
 
 if TYPE_CHECKING:
     from python_agent_tools_docs.catalogs import DocumentationCatalogs
@@ -33,10 +33,8 @@ type PageCharacters = Annotated[
 ]
 
 
-class ReadRequest(BaseModel):
-    model_config = Model.model_config
-
-    version: VersionText
+class ReadRequest(schemas.Model):
+    version: schemas.VersionText
     symbol: SymbolName
     offset: PageOffset
     max_chars: PageCharacters
@@ -81,12 +79,18 @@ def suggested_names(catalog: SymbolCatalog, symbol: str, settings: Settings) -> 
     return [match.name for match in matches[: settings.suggestion_count]]
 
 
-async def run(service: DocumentationCatalogs, request: ReadRequest) -> str:
-    catalog = await service.catalog(PythonVersion(text=request.version))
-    symbol = catalog.index.symbols.get(request.symbol)
+async def find_symbol(service: DocumentationCatalogs, version: PythonVersion, name: str) -> Symbol:
+    catalog = await service.catalog(version)
+    symbol = catalog.index.symbols.get(name)
     if symbol is None:
-        suggestions = suggested_names(catalog, request.symbol, service.settings)
-        raise UnknownSymbolError(request.symbol, suggestions)
+        raise UnknownSymbolError(name, suggested_names(catalog, name, service.settings))
+    return symbol
+
+
+async def run(service: DocumentationCatalogs, request: ReadRequest) -> str:
+    version = PythonVersion(text=request.version)
+    symbol = await find_symbol(service, version, request.symbol)
+    catalog = await service.catalog(version)
     text = await service.section(symbol)
     if request.offset > len(text):
         raise OffsetOutOfRangeError(request.offset, len(text))

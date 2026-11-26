@@ -143,6 +143,13 @@ class TestCalls:
         result = await client.call_tool(READ_TOOL, arguments)
         assert (result.is_error, 'Unknown symbol' in first_text(result)) == (True, True)
 
+    async def test_an_offset_past_the_section_end_is_a_tool_error_with_its_message(
+        self, client: Client
+    ) -> None:
+        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path.isfile', 'offset': 1_000_000}
+        result = await client.call_tool(READ_TOOL, arguments)
+        assert (result.is_error, 'exceeds the section length' in first_text(result)) == (True, True)
+
     async def test_a_call_past_its_deadline_is_a_tool_error(self, stalled_client: Client) -> None:
         arguments = {'version': DOCS_VERSION, 'query': 'os.path'}
         result = await stalled_client.call_tool(SEARCH_TOOL, arguments)
