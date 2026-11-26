@@ -54,6 +54,9 @@ class CachedLoader[K: Hashable, V]:
     fill_timeout_seconds: float
     pending: dict[K, PendingFill[V]] = field(default_factory=dict)
 
+    def peek(self, key: K) -> V | None:
+        return self.values.get(key)
+
     async def get(self, key: K) -> V:
         if (value := self.values.get(key)) is not None:
             return value

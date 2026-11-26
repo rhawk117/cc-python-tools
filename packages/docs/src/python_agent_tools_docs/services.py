@@ -45,6 +45,7 @@ class DocumentationService:
     catalogs: CachedLoader[PythonVersion, SymbolCatalog]
     sections: CachedLoader[DocumentationUrl, str]
     settings: Settings
+    store: InventoryStore = field(default_factory=MemoryInventoryStore)
     board: ProgressBoard = field(default_factory=ProgressBoard)
     reporter: ProgressReporter = field(default_factory=SilentReporter)
 
@@ -54,6 +55,15 @@ class DocumentationService:
     async def catalog(self, version: PythonVersion) -> SymbolCatalog:
         with self.board.watch(version, self.reporter):
             return await self.catalogs.get(version)
+
+    async def stored_catalog(self, version: PythonVersion) -> SymbolCatalog | None:
+        if (catalog := self.catalogs.peek(version)) is not None:
+            return catalog
+
+        if not await anyio.to_thread.run_sync(self.store.contains, version):
+            return None
+
+        return await self.catalogs.get(version)
 
     async def section(self, symbol: Symbol) -> str:
         return await self.sections.get(symbol.source_url)
@@ -118,6 +128,7 @@ def compose_service(
             environment,
         ),
         settings=settings,
+        store=environment.store,
         board=board,
     )
 

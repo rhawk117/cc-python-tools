@@ -6,14 +6,21 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated
 
 from mcp.server import mcpserver
-from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from python_agent_tools_docs import read_python_docs as read_use_case
 from python_agent_tools_docs import search_python_docs as search_use_case
+from python_agent_tools_docs.completions import RESOURCE_URI, DocumentationCompletions
 from python_agent_tools_docs.disk_cache import create_inventory_store
-from python_agent_tools_docs.errors import DocumentationToolsError, VersionRequiredError
+from python_agent_tools_docs.domain import create_python_version
+from python_agent_tools_docs.errors import (
+    DocumentationToolsError,
+    InvalidVersionError,
+    UnknownSymbolError,
+    VersionRequiredError,
+)
 from python_agent_tools_docs.project import resolve_floor
 from python_agent_tools_docs.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
 from python_agent_tools_docs.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
@@ -54,6 +61,14 @@ def tool_errors() -> Generator[None]:
         yield
     except DocumentationToolsError as error:
         raise ToolError(str(error)) from error
+
+
+@contextmanager
+def resource_errors() -> Generator[None]:
+    try:
+        yield
+    except DocumentationToolsError as error:
+        raise ResourceError(str(error)) from error
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -121,6 +136,20 @@ class DocumentationTools:
             )
             return await read_use_case.run(service, request)
 
+    async def read_section(self, version: str, symbol: str) -> str:
+        with resource_errors(), call_deadline(self.service.settings.call_timeout_seconds):
+            created = create_python_version(version)
+            if isinstance(created, InvalidVersionError):
+                raise created
+
+            catalog = await self.service.catalog(created)
+            found = catalog.index.symbols.get(symbol)
+            if found is None:
+                suggestions = read_use_case.suggested_names(catalog, symbol, self.service.settings)
+                raise UnknownSymbolError(symbol, suggestions)
+
+            return await self.service.section(found)
+
 
 def build_server(
     service: DocumentationService, environment: Mapping[str, str]
@@ -131,6 +160,14 @@ def build_server(
     server.add_tool(
         documentation.read_python_docs, annotations=READ_ONLY_REMOTE, structured_output=False
     )
+    server.resource(
+        RESOURCE_URI,
+        name='python_docs',
+        title='Python standard-library documentation',
+        description="One symbol's whole official documentation section, as Markdown.",
+        mime_type='text/markdown',
+    )(documentation.read_section)
+    server.completion()(DocumentationCompletions(service=service, environment=environment).complete)
     return server
 
 
