@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated
 
-from mcp.server.mcpserver import MCPServer
+from mcp.server import mcpserver
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -57,6 +57,14 @@ def tool_errors() -> Generator[None]:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ContextReporter:
+    context: mcpserver.Context
+
+    async def report(self, read: int, total: int | None) -> None:
+        await self.context.report_progress(read, total)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DocumentationTools:
     service: DocumentationService
     environment: Mapping[str, str]
@@ -71,19 +79,20 @@ class DocumentationTools:
 
         return floor.text
 
-    async def search_python_docs(
+    async def search_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schema from these keyword parameters
         self,
         *,
         version: OptionalVersionText = None,
         query: search_use_case.SymbolQuery,
         limit: search_use_case.SearchLimit = DEFAULT_SEARCH_LIMIT,
+        context: mcpserver.Context,
     ) -> search_use_case.SearchResult:
         """Find official Python standard-library symbols by name for one Python version.
 
         Each match is labeled exact, prefix, or approximate; treat approximate matches
         as guesses and confirm them before relying on them.
         """
-        service = self.service
+        service = self.service.reporting_to(ContextReporter(context=context))
         with tool_errors(), call_deadline(service.settings.call_timeout_seconds):
             request = SearchRequest(version=self.resolve_version(version), query=query, limit=limit)
             return await search_use_case.run(service, request)
@@ -95,13 +104,14 @@ class DocumentationTools:
         symbol: read_use_case.SymbolName,
         offset: read_use_case.PageOffset = 0,
         max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS,
+        context: mcpserver.Context,
     ) -> str:
         """Read one symbol's official documentation as Markdown, one page at a time.
 
         The first line names the symbol, its kind, the documentation version, and the
         source URL; the last line gives the next offset or marks the end of the section.
         """
-        service = self.service
+        service = self.service.reporting_to(ContextReporter(context=context))
         with tool_errors(), call_deadline(service.settings.call_timeout_seconds):
             request = ReadRequest(
                 version=self.resolve_version(version),
@@ -112,9 +122,11 @@ class DocumentationTools:
             return await read_use_case.run(service, request)
 
 
-def build_server(service: DocumentationService, environment: Mapping[str, str]) -> MCPServer:
+def build_server(
+    service: DocumentationService, environment: Mapping[str, str]
+) -> mcpserver.MCPServer:
     documentation = DocumentationTools(service=service, environment=environment)
-    server = MCPServer(SERVER_NAME, instructions=SERVER_INSTRUCTIONS)
+    server = mcpserver.MCPServer(SERVER_NAME, instructions=SERVER_INSTRUCTIONS)
     server.add_tool(documentation.search_python_docs, annotations=READ_ONLY_REMOTE)
     server.add_tool(
         documentation.read_python_docs, annotations=READ_ONLY_REMOTE, structured_output=False

@@ -6,12 +6,18 @@ from typing import TYPE_CHECKING
 import httpx2
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import AsyncIterator, Mapping
+    from collections.abc import Set as AbstractSet
+
+
+async def streamed(body: bytes) -> AsyncIterator[bytes]:
+    yield body
 
 
 @dataclass(slots=True, kw_only=True, eq=False)
 class DocsSite:
     pages: Mapping[str, bytes]
+    unsized: AbstractSet[str] = frozenset()
     redirects: Mapping[str, str] = field(default_factory=dict)
     requested_urls: list[httpx2.URL] = field(default_factory=list)
 
@@ -23,6 +29,8 @@ class DocsSite:
         body = self.pages.get(request.url.path)
         if body is None:
             return httpx2.Response(httpx2.codes.NOT_FOUND)
+        if request.url.path in self.unsized:
+            return httpx2.Response(httpx2.codes.OK, content=streamed(body))
         return httpx2.Response(httpx2.codes.OK, content=body)
 
     def transport(self) -> httpx2.MockTransport:

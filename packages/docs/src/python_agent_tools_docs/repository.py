@@ -18,12 +18,14 @@ from python_agent_tools_docs.errors import (
 from python_agent_tools_docs.extraction import extract_markdown
 from python_agent_tools_docs.inventory import parse_inventory
 from python_agent_tools_docs.matching import catalog_symbols
+from python_agent_tools_docs.progress import ProgressBoard, SilentReporter, VersionProgress
 
 if TYPE_CHECKING:
     from python_agent_tools_docs.disk_cache import InventoryStore
     from python_agent_tools_docs.domain import PythonVersion
     from python_agent_tools_docs.errors import DocumentationError
     from python_agent_tools_docs.matching import SymbolCatalog
+    from python_agent_tools_docs.progress import ProgressReporter
     from python_agent_tools_docs.settings import Settings
     from python_agent_tools_docs.store import CachedLoader
 
@@ -61,12 +63,21 @@ def response_failure(response: httpx2.Response) -> DocumentationError | None:
     return None
 
 
-async def bounded_body(response: httpx2.Response, settings: Settings) -> bytes:
+def declared_length(response: httpx2.Response) -> int | None:
+    declared = response.headers.get('content-length', '')
+    return int(declared) if declared.isdecimal() else None
+
+
+async def bounded_body(
+    response: httpx2.Response, settings: Settings, progress: ProgressReporter
+) -> bytes:
+    total = declared_length(response)
     content = bytearray()
     async for chunk in response.aiter_bytes(chunk_size=settings.download_chunk_bytes):
         if len(content) + len(chunk) > settings.download_max_bytes:
             raise DownloadTooLargeError(settings.download_max_bytes)
         content.extend(chunk)
+        await progress.report(len(content), total)
     return bytes(content)
 
 
@@ -81,25 +92,30 @@ class DocumentationSource:
     parsers: anyio.CapacityLimiter
     settings: Settings
     store: InventoryStore = field(default_factory=MemoryInventoryStore)
+    board: ProgressBoard = field(default_factory=ProgressBoard)
 
     async def fetch(self, url: DocumentationUrl) -> bytes:
+        return await self.fetch_reporting(url, SilentReporter())
+
+    async def fetch_reporting(self, url: DocumentationUrl, progress: ProgressReporter) -> bytes:
         try:
-            return await self.download(url)
+            return await self.download(url, progress)
         except httpx2.RequestError as error:
             raise RetrievalFailedError(url.text) from error
 
-    async def download(self, url: DocumentationUrl) -> bytes:
+    async def download(self, url: DocumentationUrl, progress: ProgressReporter) -> bytes:
         async with (
             self.downloads,
             self.client.stream('GET', url.text, follow_redirects=False) as response,
         ):
             if (failure := response_failure(response)) is not None:
                 raise failure
-            return await bounded_body(response, self.settings)
+            return await bounded_body(response, self.settings, progress)
 
     async def fetch_inventory(self, version: PythonVersion) -> bytes:
         try:
-            return await self.fetch(inventory_url(version))
+            progress = VersionProgress(board=self.board, version=version)
+            return await self.fetch_reporting(inventory_url(version), progress)
         except PageNotFoundError as error:
             raise VersionNotPublishedError(version.text) from error
 

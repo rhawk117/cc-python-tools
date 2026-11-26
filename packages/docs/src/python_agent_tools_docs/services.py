@@ -1,7 +1,7 @@
 """The documentation service the tools use, and the factory that composes it."""
 
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from time import monotonic
 from typing import TYPE_CHECKING
 
@@ -10,6 +10,7 @@ from cachetools import TTLCache
 
 from python_agent_tools_docs.disk_cache import MemoryInventoryStore
 from python_agent_tools_docs.errors import CallDeadlineExceededError
+from python_agent_tools_docs.progress import ProgressBoard, SilentReporter
 from python_agent_tools_docs.repository import (
     DocumentationSource,
     SectionLoader,
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from python_agent_tools_docs.disk_cache import InventoryStore
     from python_agent_tools_docs.domain import DocumentationUrl, PythonVersion, Symbol
     from python_agent_tools_docs.matching import SymbolCatalog
+    from python_agent_tools_docs.progress import ProgressReporter
     from python_agent_tools_docs.settings import Settings
 
 
@@ -43,9 +45,15 @@ class DocumentationService:
     catalogs: CachedLoader[PythonVersion, SymbolCatalog]
     sections: CachedLoader[DocumentationUrl, str]
     settings: Settings
+    board: ProgressBoard = field(default_factory=ProgressBoard)
+    reporter: ProgressReporter = field(default_factory=SilentReporter)
+
+    def reporting_to(self, reporter: ProgressReporter) -> DocumentationService:
+        return replace(self, reporter=reporter)
 
     async def catalog(self, version: PythonVersion) -> SymbolCatalog:
-        return await self.catalogs.get(version)
+        with self.board.watch(version, self.reporter):
+            return await self.catalogs.get(version)
 
     async def section(self, symbol: Symbol) -> str:
         return await self.sections.get(symbol.source_url)
@@ -83,12 +91,14 @@ def compose_service(
 ) -> DocumentationService:
     settings = environment.settings
     parsers = anyio.CapacityLimiter(settings.parse_concurrency)
+    board = ProgressBoard()
     source = DocumentationSource(
         client=client,
         downloads=anyio.CapacityLimiter(settings.download_concurrency),
         parsers=parsers,
         settings=settings,
         store=environment.store,
+        board=board,
     )
     ttl = settings.cache_ttl_seconds
     timer = environment.timer
@@ -108,6 +118,7 @@ def compose_service(
             environment,
         ),
         settings=settings,
+        board=board,
     )
 
 
