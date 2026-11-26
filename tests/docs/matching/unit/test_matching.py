@@ -3,13 +3,18 @@
 from typing import TYPE_CHECKING
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from python_agent_tools_core.version import create_python_version
 from python_docs_mcp.adapters.inventory import parse_inventory
+from python_docs_mcp.schemas.domain_types import DocumentationUrl, Symbol, SymbolIndex
 from python_docs_mcp.schemas.settings import Settings
 from python_docs_mcp.services.matching import (
     MatchTier,
     catalog_symbols,
     match_symbols,
+    member_text,
+    scoped_names,
 )
 
 from tests.docs.support.samples import DOCS_VERSION, inventory_bytes
@@ -73,3 +78,32 @@ class TestMatchSymbols:
         self, catalog: SymbolCatalog, query: str
     ) -> None:
         assert match_symbols(catalog, query, self.cutoff) == []
+
+
+class TestScopedNames:
+    cutoff = 80.0
+    scopes = st.lists(st.text('abcßŉﬁ', min_size=1, max_size=4), min_size=1, max_size=3)
+    members = st.text('abcdef', min_size=2, max_size=6)
+
+    def catalog_of(self, name: str) -> SymbolCatalog:
+        url = DocumentationUrl(text='https://docs.python.org/3.13/library/x.html')
+        symbol = Symbol(name=name, kind='py:function', source_url=url)
+        return catalog_symbols(SymbolIndex(documentation_version='3.13', symbols={name: symbol}))
+
+    @given(scope=scopes, member=members)
+    def test_casefold_equivalent_scope_finds_the_same_members(
+        self, scope: list[str], member: str
+    ) -> None:
+        dotted = '.'.join(scope)
+        name = f'{dotted}.{member}'
+        catalog = self.catalog_of(name)
+        original = scoped_names(catalog, name, self.cutoff)
+        folded = scoped_names(catalog, f'{dotted.casefold()}.{member}', self.cutoff)
+        assert original == folded == [name]
+
+    @given(scope=scopes, member=st.lists(st.text('abcdef', min_size=1, max_size=4), min_size=1))
+    def test_member_text_is_the_text_after_the_scope(
+        self, scope: list[str], member: list[str]
+    ) -> None:
+        name = '.'.join([*scope, *member])
+        assert member_text(name, '.'.join(scope).casefold()) == '.'.join(member)

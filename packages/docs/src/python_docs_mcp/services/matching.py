@@ -113,10 +113,14 @@ def fuzzy_names(query: str, choices: Mapping[str, str], cutoff: float) -> list[s
     return [name for _, _, name in results]
 
 
+def member_text(name: str, scope: str) -> str:
+    return '.'.join(name.split('.')[scope.count('.') + 1 :])
+
+
 def scoped_members(catalog: SymbolCatalog, scope: str) -> dict[str, str]:
     prefix = f'{scope}.'
     members = (
-        (name, name[len(prefix) :])
+        (name, member_text(name, scope))
         for name in catalog.segments
         if name.casefold().startswith(prefix)
     )
@@ -127,7 +131,7 @@ def scoped_names(catalog: SymbolCatalog, query: str, cutoff: float) -> list[str]
     scope = next((scope for scope in dotted_scopes(query) if scope in catalog.namespaces), None)
     if scope is None:
         return []
-    return fuzzy_names(query[len(scope) + 1 :], scoped_members(catalog, scope), cutoff)
+    return fuzzy_names(member_text(query, scope), scoped_members(catalog, scope), cutoff)
 
 
 def approximate_names(catalog: SymbolCatalog, query: str, cutoff: float) -> list[str]:
