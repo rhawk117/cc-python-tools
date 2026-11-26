@@ -9,7 +9,7 @@ from python_agent_tools_core.version import PythonVersion
 from python_docs_mcp.core.exception import OffsetOutOfRangeError, UnknownSymbolError
 from python_docs_mcp.schemas import base as schemas
 from python_docs_mcp.services.fences import fence_before, scan_fence
-from python_docs_mcp.services.matching import MatchOptions, match_symbols
+from python_docs_mcp.services.matching import create_match_options, match_symbols
 
 if TYPE_CHECKING:
     from python_docs_mcp.schemas.domain_types import Symbol
@@ -103,7 +103,7 @@ class SectionPage:
 
 
 def suggested_names(catalog: SymbolCatalog, symbol: str, settings: Settings) -> list[str]:
-    options = MatchOptions(cutoff=settings.fuzzy_score_cutoff, limit=settings.fuzzy_match_limit)
+    options = create_match_options(settings)
     result = match_symbols(catalog, symbol, options)
     return [match.name for match in result.matches[: settings.suggestion_count]]
 

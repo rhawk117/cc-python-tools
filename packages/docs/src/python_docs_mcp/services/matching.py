@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
     from python_docs_mcp.schemas.domain_types import DocumentationUrl, SymbolIndex
+    from python_docs_mcp.schemas.settings import Settings
 
 SEGMENT_SEPARATORS = str.maketrans('._', '  ')
 
@@ -31,12 +32,16 @@ class SymbolMatch:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MatchOptions:
-    cutoff: float = 80
-    limit: int = 100
+    cutoff: float
+    limit: int
 
     @property
     def probe_limit(self) -> int:
         return self.limit + 1
+
+
+def create_match_options(settings: Settings) -> MatchOptions:
+    return MatchOptions(cutoff=settings.fuzzy_score_cutoff, limit=settings.fuzzy_match_limit)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

@@ -65,10 +65,7 @@ def search_match(match: SymbolMatch) -> SearchMatch:
 
 async def run(service: DocumentationCatalogs, request: SearchRequest) -> SearchResult:
     catalog = await service.catalog(PythonVersion(text=request.version))
-    settings = service.settings
-    options = matching.MatchOptions(
-        cutoff=settings.fuzzy_score_cutoff, limit=settings.fuzzy_match_limit
-    )
+    options = matching.create_match_options(service.settings)
     result = matching.match_symbols(catalog, request.query, options)
     matches = result.matches
     return SearchResult(

@@ -13,6 +13,7 @@ from python_docs_mcp.services.matching import (
     MatchOptions,
     MatchTier,
     catalog_symbols,
+    create_match_options,
     match_symbols,
     member_text,
     scoped_names,
@@ -38,7 +39,7 @@ def catalog_of_names(names: list[str]) -> SymbolCatalog:
 
 
 class TestMatchSymbols:
-    options = MatchOptions()
+    options = create_match_options(Settings())
 
     def first_match(self, catalog: SymbolCatalog, query: str) -> tuple[str, MatchTier]:
         match = match_symbols(catalog, query, self.options).matches[0]
@@ -109,7 +110,7 @@ class TestMatchLimit:
         assert self.match_all(size, cap).truncated == (size > cap)
 
     def test_exact_name_stays_first_under_a_tiny_cap(self, catalog: SymbolCatalog) -> None:
-        result = match_symbols(catalog, 'os.path.join', MatchOptions(limit=1))
+        result = match_symbols(catalog, 'os.path.join', MatchOptions(cutoff=80, limit=1))
         assert (result.matches[0].name, result.matches[0].match, result.truncated) == (
             'os.path.join',
             MatchTier.EXACT,
@@ -118,7 +119,7 @@ class TestMatchLimit:
 
 
 class TestScopedNames:
-    options = MatchOptions()
+    options = create_match_options(Settings())
     scopes = st.lists(st.text('abcßŉﬁ', min_size=1, max_size=4), min_size=1, max_size=3)
     members = st.text('abcdef', min_size=2, max_size=6)
 
