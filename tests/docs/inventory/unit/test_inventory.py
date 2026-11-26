@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from python_agent_tools_docs.domain import PythonVersion
-from python_agent_tools_docs.errors import (
+from python_docs_mcp.domain import PythonVersion
+from python_docs_mcp.errors import (
     CorruptInventoryError,
     EmptyInventoryError,
     InventoryEntryLimitError,
@@ -14,8 +14,8 @@ from python_agent_tools_docs.errors import (
     MalformedInventoryError,
     UnsupportedInventoryError,
 )
-from python_agent_tools_docs.inventory import parse_inventory
-from python_agent_tools_docs.settings import Settings
+from python_docs_mcp.inventory import parse_inventory
+from python_docs_mcp.settings import Settings
 
 from tests.docs.support.samples import (
     DOCS_VERSION,
@@ -28,7 +28,7 @@ from tests.docs.support.samples import (
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from python_agent_tools_docs.errors import DocumentationError
+    from python_docs_mcp.errors import DocumentationError
 
 ESCAPING_ENTRY = InventoryEntry(name='escape', uri='../2.7/library/os.html#$')
 FOREIGN_SCOPE_ENTRY = InventoryEntry(name='guide', uri='howto/logging.html#$', indexed=False)

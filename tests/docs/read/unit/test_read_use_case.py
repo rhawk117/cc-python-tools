@@ -2,15 +2,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from python_agent_tools_docs.domain import DocumentationUrl, Symbol, SymbolIndex
-from python_agent_tools_docs.errors import OffsetOutOfRangeError, UnknownSymbolError
-from python_agent_tools_docs.matching import catalog_symbols
-from python_agent_tools_docs.read_python_docs import ReadRequest, run
-from python_agent_tools_docs.settings import Settings
+from python_docs_mcp.domain import DocumentationUrl, Symbol, SymbolIndex
+from python_docs_mcp.errors import OffsetOutOfRangeError, UnknownSymbolError
+from python_docs_mcp.matching import catalog_symbols
+from python_docs_mcp.read_python_docs import ReadRequest, run
+from python_docs_mcp.settings import Settings
 
 if TYPE_CHECKING:
-    from python_agent_tools_docs.domain import PythonVersion
-    from python_agent_tools_docs.matching import SymbolCatalog
+    from python_docs_mcp.domain import PythonVersion
+    from python_docs_mcp.matching import SymbolCatalog
 
 SOURCE_URL = DocumentationUrl(text='https://docs.python.org/3.13/library/os.path.html#os.path.join')
 JOIN = Symbol(name='os.path.join', kind='function', source_url=SOURCE_URL)

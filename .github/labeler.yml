@@ -49,11 +49,6 @@ supply-chain:
       - any-glob-to-any-file:
           - .claude-plugin/**
 
-"plugin:hooks":
-  - changed-files:
-      - any-glob-to-any-file:
-          - hooks/**
-
 "plugin:mcp":
   - changed-files:
       - any-glob-to-any-file:

@@ -9,10 +9,7 @@ if TYPE_CHECKING:
 
 
 class TestMcpServerListing:
-    server_paths = (
-        './mcp-servers/agent-tools-mcp.json',
-        './mcp-servers/python-docs-mcp.json',
-    )
+    server_paths = ('./mcp-servers/python-docs-mcp.json',)
 
     @pytest.mark.parametrize('server_path', server_paths)
     def test_server_file_exists_on_disk(self, repository_root: Path, server_path: str) -> None:

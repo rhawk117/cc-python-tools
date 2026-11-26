@@ -33,18 +33,14 @@ class PluginManifestFile:
 @dataclass(slots=True, frozen=True, kw_only=True)
 class PluginInventory:
     manifest: PluginManifestFile
-    mcp: PluginManifestFile
     docs_mcp: PluginManifestFile
-    hooks: PluginManifestFile
 
 
 @pytest.fixture
 def claude_plugin(repository_root: Path) -> PluginInventory:
     plugin_paths = {
         'manifest': repository_root.joinpath('.claude-plugin', 'plugin.json'),
-        'mcp': repository_root.joinpath('mcp-servers', 'agent-tools-mcp.json'),
         'docs_mcp': repository_root.joinpath('mcp-servers', 'python-docs-mcp.json'),
-        'hooks': repository_root.joinpath('hooks', 'hooks.json'),
     }
     plugin_files = {key: PluginManifestFile.read(path) for key, path in plugin_paths.items()}
     return PluginInventory(**plugin_files)

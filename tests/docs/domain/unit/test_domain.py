@@ -1,12 +1,12 @@
 import pytest
-from python_agent_tools_docs.domain import (
+from python_docs_mcp.domain import (
     DocumentationUrl,
     PythonVersion,
     ambiguous_url_violation,
     create_documentation_url,
     create_python_version,
 )
-from python_agent_tools_docs.errors import (
+from python_docs_mcp.errors import (
     AmbiguousUrlError,
     ForeignUrlError,
     InvalidVersionError,

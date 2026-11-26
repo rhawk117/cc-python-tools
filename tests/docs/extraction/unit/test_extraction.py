@@ -3,9 +3,9 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from python_agent_tools_docs.domain import DocumentationUrl
-from python_agent_tools_docs.errors import MissingAnchorError
-from python_agent_tools_docs.extraction import extract_markdown
+from python_docs_mcp.domain import DocumentationUrl
+from python_docs_mcp.errors import MissingAnchorError
+from python_docs_mcp.extraction import extract_markdown
 
 from tests.docs.support.samples import FILLER_SENTENCE, OS_PATH_PAGE
 

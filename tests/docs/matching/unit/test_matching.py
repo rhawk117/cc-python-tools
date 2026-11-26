@@ -3,19 +3,19 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from python_agent_tools_docs.domain import create_python_version
-from python_agent_tools_docs.inventory import parse_inventory
-from python_agent_tools_docs.matching import (
+from python_docs_mcp.domain import create_python_version
+from python_docs_mcp.inventory import parse_inventory
+from python_docs_mcp.matching import (
     MatchTier,
     catalog_symbols,
     match_symbols,
 )
-from python_agent_tools_docs.settings import Settings
+from python_docs_mcp.settings import Settings
 
 from tests.docs.support.samples import DOCS_VERSION, inventory_bytes
 
 if TYPE_CHECKING:
-    from python_agent_tools_docs.matching import (
+    from python_docs_mcp.matching import (
         SymbolCatalog,
     )
 

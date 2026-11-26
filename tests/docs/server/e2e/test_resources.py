@@ -11,12 +11,12 @@ from mcp.types import (
     TextContent,
     TextResourceContents,
 )
-from python_agent_tools_docs.completions import RESOURCE_URI
-from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
-from python_agent_tools_docs.disk_cache import DATA_DIRECTORY_VARIABLE, create_inventory_store
-from python_agent_tools_docs.project import PROJECT_ROOT_VARIABLE
-from python_agent_tools_docs.server import build_server
-from python_agent_tools_docs.settings import Settings
+from python_docs_mcp.completions import RESOURCE_URI
+from python_docs_mcp.composition import ServiceOptions, open_documentation_service
+from python_docs_mcp.disk_cache import DATA_DIRECTORY_VARIABLE, create_inventory_store
+from python_docs_mcp.project import PROJECT_ROOT_VARIABLE
+from python_docs_mcp.server import build_server
+from python_docs_mcp.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import (
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import httpx2
-    from python_agent_tools_docs.domain import PythonVersion
+    from python_docs_mcp.domain import PythonVersion
 
 READ_TOOL = 'read_python_docs'
 TEMPLATE = ResourceTemplateReference(uri=RESOURCE_URI)

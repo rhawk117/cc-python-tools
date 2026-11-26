@@ -1,13 +1,17 @@
+import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import anyio
 import pytest
+from anyio.lowlevel import checkpoint
 from mcp import Client
-from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
-from python_agent_tools_docs.server import build_server
-from python_agent_tools_docs.settings import Settings
+from python_docs_mcp import progress
+from python_docs_mcp.composition import ServiceOptions, open_documentation_service
+from python_docs_mcp.domain import PythonVersion
+from python_docs_mcp.server import build_server
+from python_docs_mcp.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, inventory_bytes, standard_pages
@@ -16,7 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from mcp.server import mcpserver
-    from python_agent_tools_docs.domain import PythonVersion
+    from python_docs_mcp.services import DocumentationService
 
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
 SEARCH_TOOL = 'search_python_docs'
@@ -44,16 +48,31 @@ class StoredInventory:
     def write(self, version: PythonVersion, content: bytes) -> None: ...
 
 
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class SharedService:
+    site: DocsSite
+    service: DocumentationService
+    server: mcpserver.MCPServer
+
+
+@asynccontextmanager
+async def open_shared_service(
+    site: DocsSite, options: ServiceOptions | None = None
+) -> AsyncGenerator[SharedService]:
+    options = options or ServiceOptions()
+    options = ServiceOptions(transport=site.transport(), store=options.store)
+    settings = Settings(download_chunk_bytes=CHUNK_BYTES)
+    async with open_documentation_service(settings, options) as service:
+        yield SharedService(site=site, service=service, server=build_server(service, {}))
+
+
 @asynccontextmanager
 async def open_client(
     site: DocsSite, options: ServiceOptions | None = None
 ) -> AsyncGenerator[Client]:
-    settings = Settings(download_chunk_bytes=CHUNK_BYTES)
-    options = options or ServiceOptions()
-    options = ServiceOptions(transport=site.transport(), store=options.store)
     async with (
-        open_documentation_service(settings, options) as service,
-        Client(build_server(service, {})) as client,
+        open_shared_service(site, options) as shared,
+        Client(shared.server) as client,
     ):
         yield client
 
@@ -124,8 +143,55 @@ class TestInventoryProgress:
         assert {event[1] for event in log.events} == {None}
 
 
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class ClientRun:
+    first_log: ProgressLog
+    second_log: ProgressLog
+    starter: anyio.CancelScope
+    results: list[bool]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class WatcherWait:
+    service: DocumentationService
+    version: PythonVersion
+    expected: int
+
+    async def until_ready(self) -> None:
+        while self.service.board.watcher_count(self.version) < self.expected:
+            await checkpoint()
+
+
 class TestConcurrentProgress:
     inventory = inventory_bytes()
+    bound_seconds = 10
+    expected_watchers = 2
+    board_logger = progress.logger.name
+
+    @pytest.fixture
+    async def shared(self) -> AsyncGenerator[SharedService]:
+        async with open_shared_service(DocsSite(pages=standard_pages())) as shared:
+            yield shared
+
+    @pytest.fixture
+    async def held(self) -> AsyncGenerator[SharedService]:
+        site = DocsSite(pages=standard_pages(), held=INVENTORY_PATH)
+        async with open_shared_service(site) as held:
+            yield held
+
+    @pytest.fixture
+    async def run(self) -> ClientRun:
+        return ClientRun(
+            first_log=ProgressLog(),
+            second_log=ProgressLog(),
+            starter=anyio.CancelScope(),
+            results=[],
+        )
+
+    @pytest.fixture
+    def watchers(self, held: SharedService) -> WatcherWait:
+        version = PythonVersion(text=DOCS_VERSION)
+        return WatcherWait(service=held.service, version=version, expected=self.expected_watchers)
 
     async def search_with_progress(
         self, server: mcpserver.MCPServer, log: ProgressLog, results: list[bool]
@@ -138,18 +204,47 @@ class TestConcurrentProgress:
             )
         results.append(not result.is_error)
 
-    async def test_two_clients_searching_the_same_cold_version_both_get_progress(self) -> None:
-        site = DocsSite(pages=standard_pages())
-        options = ServiceOptions(transport=site.transport())
-        logs = [ProgressLog(), ProgressLog()]
-        results: list[bool] = []
-        async with open_documentation_service(
-            Settings(download_chunk_bytes=CHUNK_BYTES), options
-        ) as service:
-            server = build_server(service, {})
+    async def search_until_cancelled(
+        self, server: mcpserver.MCPServer, log: ProgressLog, scope: anyio.CancelScope
+    ) -> None:
+        with scope:
+            await self.search_with_progress(server, log, [])
+
+    async def test_two_clients_searching_the_same_cold_version_both_get_progress(
+        self, shared: SharedService, run: ClientRun
+    ) -> None:
+        async with anyio.create_task_group() as clients:
+            for log in (run.first_log, run.second_log):
+                clients.start_soon(self.search_with_progress, shared.server, log, run.results)
+        assert run.results == [True, True]
+        assert [bool(run.first_log.events), bool(run.second_log.events)] == [True, True]
+        assert shared.site.request_count(INVENTORY_PATH) == 1
+
+    async def test_a_normal_search_logs_no_progress_board_warning(
+        self, shared: SharedService, run: ClientRun, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING, logger=self.board_logger):
             async with anyio.create_task_group() as clients:
-                for log in logs:
-                    clients.start_soon(self.search_with_progress, server, log, results)
-        assert results == [True, True]
-        assert [bool(log.events) for log in logs] == [True, True]
-        assert site.request_count(INVENTORY_PATH) == 1
+                for log in (run.first_log, run.second_log):
+                    clients.start_soon(self.search_with_progress, shared.server, log, run.results)
+        assert run.results == [True, True]
+        assert [r for r in caplog.records if r.name == self.board_logger] == []
+
+    async def test_cancelling_the_client_that_started_a_shared_download_spares_the_other(
+        self, held: SharedService, run: ClientRun, watchers: WatcherWait
+    ) -> None:
+        with anyio.fail_after(self.bound_seconds):
+            async with anyio.create_task_group() as clients:
+                clients.start_soon(
+                    self.search_until_cancelled, held.server, run.first_log, run.starter
+                )
+                await held.site.wait_until_hold_engaged()
+                clients.start_soon(
+                    self.search_with_progress, held.server, run.second_log, run.results
+                )
+                await watchers.until_ready()
+                run.starter.cancel()
+                held.site.release()
+        assert run.results == [True]
+        assert run.second_log.events[-1][0] == float(len(self.inventory))
+        assert held.site.request_count(INVENTORY_PATH) == 1

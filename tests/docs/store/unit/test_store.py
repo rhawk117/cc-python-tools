@@ -4,18 +4,18 @@ from typing import TYPE_CHECKING
 import anyio
 import pytest
 from cachetools import TTLCache
-from python_agent_tools_docs.errors import (
+from python_docs_mcp.errors import (
     FillTimeoutError,
     RetrievalFailedError,
     VersionNotPublishedError,
 )
-from python_agent_tools_docs.store import CachedLoader
+from python_docs_mcp.store import CachedLoader
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from anyio.abc import TaskGroup
-    from python_agent_tools_docs.errors import (
+    from python_docs_mcp.errors import (
         DocumentationError,
     )
 

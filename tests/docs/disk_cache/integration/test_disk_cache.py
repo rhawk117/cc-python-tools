@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 from mcp import Client
-from python_agent_tools_docs.composition import ServiceOptions, open_documentation_service
-from python_agent_tools_docs.disk_cache import (
+from python_docs_mcp.composition import ServiceOptions, open_documentation_service
+from python_docs_mcp.disk_cache import (
     CACHE_DIRECTORY,
     DATA_DIRECTORY_VARIABLE,
     create_inventory_store,
 )
-from python_agent_tools_docs.domain import PythonVersion, create_python_version
-from python_agent_tools_docs.server import build_server
-from python_agent_tools_docs.settings import Settings
+from python_docs_mcp.domain import PythonVersion, create_python_version
+from python_docs_mcp.server import build_server
+from python_docs_mcp.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from python_agent_tools_docs.disk_cache import InventoryStore
+    from python_docs_mcp.disk_cache import InventoryStore
 
 SUFFIXES = {'.inv', '.sha256'}
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
