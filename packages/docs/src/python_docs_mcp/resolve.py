@@ -19,7 +19,7 @@ from python_docs_mcp.stores.repository import DocumentationSource
 from python_docs_mcp.stores.store import CachedLoader
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Hashable, Mapping
+    from collections.abc import Hashable, Mapping
     from contextlib import AbstractContextManager
     from types import TracebackType
 
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from mcp.server.mcpserver.exceptions import MCPServerError
     from python_agent_tools_core.version import PythonVersion
 
-    from python_docs_mcp.core.interfaces import ClockInterface
+    from python_docs_mcp.core.interfaces import ClockInterface, Loader
     from python_docs_mcp.schemas.domain_types import DocumentationUrl
     from python_docs_mcp.schemas.settings import Settings
     from python_docs_mcp.services.matching import SymbolCatalog
@@ -43,8 +43,24 @@ class LoaderEnvironment:
     clock: ClockInterface
 
 
+@dataclass(frozen=True, slots=True)
+class PageFetcher:
+    source: DocumentationSource
+
+    async def load(self, url: DocumentationUrl) -> bytes:
+        return await self.source.fetch(url)
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogFetcher:
+    loader: CatalogLoader
+
+    async def load(self, version: PythonVersion) -> SymbolCatalog:
+        return await self.loader.catalog(version)
+
+
 def cached_loader[K: Hashable, V](
-    loader: Callable[[K], Awaitable[V]],
+    loader: Loader[K, V],
     values: TTLCache[K, V],
     environment: LoaderEnvironment,
 ) -> CachedLoader[K, V]:
@@ -108,15 +124,15 @@ def compose_service(
 ) -> DocumentationService:
     board = ProgressBoard()
     source = documentation_source(client, environment, board)
-    pages = cached_loader(source.fetch, page_cache(environment), environment)
+    pages = cached_loader(PageFetcher(source), page_cache(environment), environment)
     parsers = anyio.CapacityLimiter(environment.settings.parse_concurrency)
     loader = CatalogLoader(
         source=source, store=environment.store, parsers=parsers, settings=environment.settings
     )
     sections = SectionLoader(pages=pages, parsers=parsers)
     return DocumentationService(
-        catalogs=cached_loader(loader.catalog, catalog_cache(environment), environment),
-        sections=cached_loader(sections.load, section_cache(environment), environment),
+        catalogs=cached_loader(CatalogFetcher(loader), catalog_cache(environment), environment),
+        sections=cached_loader(sections, section_cache(environment), environment),
         settings=environment.settings,
         loader=loader,
         board=board,

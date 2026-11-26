@@ -51,7 +51,7 @@ def create_cache(
     return CachedLoader(
         values=TTLCache(maxsize=value_capacity, ttl=60, timer=clock.monotonic, getsizeof=len),
         misses=TTLCache(maxsize=8, ttl=300, timer=clock.monotonic),
-        loader=loader.load,
+        loader=loader,
         fills=fills,
         fill_timeout_seconds=0.5,
     )

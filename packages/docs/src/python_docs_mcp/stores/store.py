@@ -15,10 +15,12 @@ from python_docs_mcp.core.exception import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Hashable
+    from collections.abc import Hashable
 
     from anyio.abc import TaskGroup
     from cachetools import TTLCache
+
+    from python_docs_mcp.core.interfaces import Loader
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,7 +52,7 @@ class PendingFill[V]:
 class CachedLoader[K: Hashable, V]:
     values: TTLCache[K, V]
     misses: TTLCache[K, PermanentMissError]
-    loader: Callable[[K], Awaitable[V]]
+    loader: Loader[K, V]
     fills: TaskGroup
     fill_timeout_seconds: float
     pending: dict[K, PendingFill[V]] = field(default_factory=dict)
@@ -86,7 +88,7 @@ class CachedLoader[K: Hashable, V]:
     async def load_within_deadline(self, key: K) -> FillSucceeded[V]:
         try:
             with anyio.fail_after(self.fill_timeout_seconds):
-                return FillSucceeded(await self.loader(key))
+                return FillSucceeded(await self.loader.load(key))
         except TimeoutError as error:
             raise FillTimeoutError(self.fill_timeout_seconds) from error
 
