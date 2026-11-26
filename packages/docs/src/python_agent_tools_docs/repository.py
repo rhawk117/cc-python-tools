@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import anyio
 import httpx2
 
 from python_agent_tools_docs.domain import DocumentationUrl, create_documentation_url
@@ -11,11 +12,15 @@ from python_agent_tools_docs.errors import (
     PageNotFoundError,
     RetrievalFailedError,
     UpstreamStatusError,
+    VersionNotPublishedError,
 )
+from python_agent_tools_docs.inventory import parse_inventory
+from python_agent_tools_docs.matching import catalog_symbols
 
 if TYPE_CHECKING:
     from python_agent_tools_docs.domain import PythonVersion
     from python_agent_tools_docs.errors import DocumentationError
+    from python_agent_tools_docs.matching import SymbolCatalog
     from python_agent_tools_docs.settings import Settings
 
 
@@ -61,9 +66,15 @@ async def bounded_body(response: httpx2.Response, settings: Settings) -> bytes:
     return bytes(content)
 
 
+def build_catalog(content: bytes, version: PythonVersion, settings: Settings) -> SymbolCatalog:
+    return catalog_symbols(parse_inventory(content, version, settings))
+
+
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
 class DocumentationSource:
     client: httpx2.AsyncClient
+    downloads: anyio.CapacityLimiter
+    parsers: anyio.CapacityLimiter
     settings: Settings
 
     async def fetch(self, url: DocumentationUrl) -> bytes:
@@ -73,7 +84,19 @@ class DocumentationSource:
             raise RetrievalFailedError(url.text) from error
 
     async def download(self, url: DocumentationUrl) -> bytes:
-        async with self.client.stream('GET', url.text, follow_redirects=False) as response:
+        async with (
+            self.downloads,
+            self.client.stream('GET', url.text, follow_redirects=False) as response,
+        ):
             if (failure := response_failure(response)) is not None:
                 raise failure
             return await bounded_body(response, self.settings)
+
+    async def catalog(self, version: PythonVersion) -> SymbolCatalog:
+        try:
+            content = await self.fetch(inventory_url(version))
+        except PageNotFoundError as error:
+            raise VersionNotPublishedError(version.text) from error
+        return await anyio.to_thread.run_sync(
+            build_catalog, content, version, self.settings, limiter=self.parsers
+        )
