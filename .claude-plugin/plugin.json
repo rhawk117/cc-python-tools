@@ -9,7 +9,10 @@
   "author": {
     "name": "rhawk117"
   },
-  "mcpServers": "./mcp-servers/agent-tools-mcp.json",
+  "mcpServers": [
+    "./mcp-servers/agent-tools-mcp.json",
+    "./mcp-servers/python-docs-mcp.json"
+  ],
   "keywords": [
     "python",
     "uv",
