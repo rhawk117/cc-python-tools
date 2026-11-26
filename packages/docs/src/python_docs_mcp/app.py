@@ -1,13 +1,14 @@
 """The python-docs-mcp server: the tools, the resource and the completions declared in one place."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from mcp.server import mcpserver
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.server.mcpserver.resolve import Resolve
 from mcp.types import ToolAnnotations
-from pydantic import Field
+from pydantic import BaseModel, Field
 from python_agent_tools_core.exception import InvalidVersionError, VersionRequiredError
 from python_agent_tools_core.project import resolve_floor
 from python_agent_tools_core.version import create_python_version
@@ -21,6 +22,7 @@ from python_docs_mcp.lifespan import (
 )
 from python_docs_mcp.resolve import ErrorTranslator, MCPCallStack
 from python_docs_mcp.schemas.base import VersionText
+from python_docs_mcp.server import ArgumentErrorExtension
 from python_docs_mcp.services import read_python_docs as read_use_case
 from python_docs_mcp.services import search_python_docs as search_use_case
 from python_docs_mcp.services.completions import (
@@ -61,6 +63,27 @@ ProjectVersionText = Annotated[
         )
     ),
 ]
+
+ToolName = Literal['search_python_docs', 'read_python_docs']
+
+
+class SearchArguments(BaseModel):
+    version: ProjectVersionText | None = None
+    query: search_use_case.SymbolQuery
+    limit: search_use_case.SearchLimit = DEFAULT_SEARCH_LIMIT
+
+
+class ReadArguments(BaseModel):
+    version: ProjectVersionText | None = None
+    symbol: read_use_case.SymbolName
+    offset: read_use_case.PageOffset = 0
+    max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS
+
+
+TOOL_ARGUMENT_MODELS: Mapping[ToolName, type[BaseModel]] = MappingProxyType({
+    'search_python_docs': SearchArguments,
+    'read_python_docs': ReadArguments,
+})
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -114,6 +137,7 @@ def create_server(*, settings: Settings | None = None) -> mcpserver.MCPServer[Se
         SERVER_NAME,
         instructions=SERVER_INSTRUCTIONS,
         lifespan=ServerLifespan(settings=settings).open,
+        extensions=[ArgumentErrorExtension(models=TOOL_ARGUMENT_MODELS)],
     )
 
 
