@@ -3,12 +3,13 @@
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Annotated
+from urllib.parse import quote
 
 from mcp.server import mcpserver
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.server.mcpserver.resolve import Resolve
 from mcp.types import ToolAnnotations
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from python_agent_tools_core.exception import InvalidVersionError, VersionRequiredError
 from python_agent_tools_core.project import resolve_floor
 from python_agent_tools_core.version import create_python_version
@@ -22,7 +23,7 @@ from python_docs_mcp.lifespan import (
 )
 from python_docs_mcp.resolve import ErrorTranslator, MCPCallStack
 from python_docs_mcp.schemas.base import VersionText
-from python_docs_mcp.server import ArgumentErrorExtension
+from python_docs_mcp.server import ArgumentErrorExtension, ArgumentErrorFormatter
 from python_docs_mcp.services import read_python_docs as read_use_case
 from python_docs_mcp.services import search_python_docs as search_use_case
 from python_docs_mcp.services.completions import (
@@ -78,6 +79,17 @@ class ReadArguments(BaseModel):
     max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS
 
 
+class ResourceOffsetArguments(BaseModel):
+    offset: read_use_case.PageOffset
+
+
+def parse_resource_offset(text: str) -> int:
+    try:
+        return ResourceOffsetArguments.model_validate({'offset': text}).offset
+    except ValidationError as problems:
+        raise ResourceError(ArgumentErrorFormatter().describe(problems)) from problems
+
+
 TOOL_ARGUMENT_MODELS: Mapping[str, type[BaseModel]] = MappingProxyType({
     'search_python_docs': SearchArguments,
     'read_python_docs': ReadArguments,
@@ -106,12 +118,19 @@ def resolve_tool_call_stack(context: mcpserver.Context[ServerState]) -> MCPCallS
     )
 
 
-def resolve_resource_call_stack(context: mcpserver.Context[ServerState]) -> MCPCallStack:
-    state = context.request_context.lifespan_context
+def resolve_resource_service() -> DocumentationService:
+    service = get_service_registry().get_service()
+    if service is None:
+        raise ServiceUnavailableError
+
+    return service
+
+
+def create_resource_call_stack(service: DocumentationService) -> MCPCallStack:
     return MCPCallStack(
         translator=ErrorTranslator(raises=ResourceError),
-        deadline_seconds=state.service.settings.call_timeout_seconds,
-        environment=state.environment,
+        deadline_seconds=service.settings.call_timeout_seconds,
+        environment=get_config_registry().provide_config().environment,
     )
 
 
@@ -191,19 +210,28 @@ async def read_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schem
 @server.resource(
     RESOURCE_URI,
     title='Python standard-library documentation',
-    description="One symbol's whole official documentation section, as Markdown.",
+    description=(
+        "One symbol's official documentation as Markdown, one page at a time;"
+        ' the last line names the next offset.'
+    ),
     mime_type='text/markdown',
 )
-async def python_docs(version: str, symbol: str, context: mcpserver.Context[ServerState]) -> str:
-    call_stack = resolve_resource_call_stack(context)
+async def python_docs(*, version: str, symbol: str, offset: str = '0') -> str:
+    service = resolve_resource_service()
+    call_stack = create_resource_call_stack(service)
     with call_stack.create_callstack():
         created = create_python_version(version)
         if isinstance(created, InvalidVersionError):
             raise created
 
-        service = context.request_context.lifespan_context.service
-        found = await read_use_case.find_symbol(service, created, symbol)
-        return await service.section(found)
+        request = ReadRequest(
+            version=created.text,
+            symbol=symbol,
+            offset=parse_resource_offset(offset),
+            max_chars=DEFAULT_PAGE_CHARACTERS,
+        )
+        continuation = f'read python-docs://{created.text}/{quote(symbol, safe="")}?offset='
+        return await read_use_case.run(service, request, continuation)
 
 
 async def complete_documentation(
@@ -211,10 +239,7 @@ async def complete_documentation(
     argument: CompletionArgument,
     context: CompletionContext | None,
 ) -> Completion | None:
-    service = get_service_registry().get_service()
-    if service is None:
-        raise ServiceUnavailableError
-
+    service = resolve_resource_service()
     environment = get_config_registry().provide_config().environment
     completions = DocumentationCompletions(service=service, environment=environment)
     return await completions.complete(ref, argument, context)

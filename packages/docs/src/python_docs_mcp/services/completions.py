@@ -20,10 +20,12 @@ if TYPE_CHECKING:
     from python_docs_mcp.schemas.settings import Settings
     from python_docs_mcp.services.documentation_service import DocumentationService
 
-RESOURCE_URI = 'python-docs://{version}/{symbol}'
+RESOURCE_URI = 'python-docs://{version}/{symbol}{?offset}'
 MAX_COMPLETION_VALUES = 100
 VERSION_ARGUMENT = 'version'
 SYMBOL_ARGUMENT = 'symbol'
+OFFSET_ARGUMENT = 'offset'
+OFFSET_VALUES = ['0']
 
 
 def version_window(settings: Settings) -> list[str]:
@@ -61,6 +63,9 @@ class DocumentationCompletions:
     def complete_version(self, prefix: str) -> Completion:
         return capped([name for name in self.version_names() if name.startswith(prefix)])
 
+    def complete_offset(self, prefix: str) -> Completion:
+        return capped([value for value in OFFSET_VALUES if value.startswith(prefix)])
+
     async def symbol_names(self, version_text: str, prefix: str) -> list[str]:
         version = create_python_version(version_text)
         if isinstance(version, InvalidVersionError):
@@ -95,5 +100,8 @@ class DocumentationCompletions:
 
         if argument.name == SYMBOL_ARGUMENT:
             return await self.complete_symbol(argument.value, context)
+
+        if argument.name == OFFSET_ARGUMENT:
+            return self.complete_offset(argument.value)
 
         return None

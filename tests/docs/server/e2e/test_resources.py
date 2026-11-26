@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -21,6 +22,8 @@ from python_docs_mcp.stores.disk_cache import DATA_DIRECTORY_VARIABLE, create_in
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import (
     DOCS_VERSION,
+    FILLER_SENTENCE,
+    OS_PATH_PAGE,
     InventoryEntry,
     inventory_bytes,
     standard_pages,
@@ -35,6 +38,7 @@ if TYPE_CHECKING:
     from tests.docs.support.server import ServerHarness
 
 READ_TOOL = 'read_python_docs'
+NEXT_OFFSET = re.compile(r'offset=(\d+)')
 TEMPLATE = ResourceTemplateReference(uri=RESOURCE_URI)
 
 
@@ -46,6 +50,21 @@ async def complete(client: Client, name: str, value: str, resolved: dict[str, st
 @pytest.fixture
 def site() -> DocsSite:
     return DocsSite(pages=standard_pages())
+
+
+@pytest.fixture
+def long_site() -> DocsSite:
+    pages = standard_pages()
+    long_page = OS_PATH_PAGE.replace(FILLER_SENTENCE * 40, FILLER_SENTENCE * 400)
+    pages[f'/{DOCS_VERSION}/library/os.path.html'] = long_page.encode()
+    return DocsSite(pages=pages)
+
+
+@pytest.fixture
+async def long_client(harness: ServerHarness, long_site: DocsSite) -> AsyncGenerator[Client]:
+    async with harness.connect(options=ServiceOptions(transport=long_site.transport())) as client:
+        assert isinstance(client, Client)
+        yield client
 
 
 @pytest.fixture
@@ -74,21 +93,62 @@ class TestTemplate:
         listed = await client.list_resource_templates()
         assert [template.uri_template for template in listed.resource_templates] == [RESOURCE_URI]
 
-    async def test_reading_returns_the_whole_section_the_tool_returns(self, client: Client) -> None:
-        uri = f'python-docs://{DOCS_VERSION}/os.path.join'
-        resource = await client.read_resource(uri)
-        content = resource.contents[0]
-        tool = await client.call_tool(
-            READ_TOOL, {'version': DOCS_VERSION, 'symbol': 'os.path.join', 'max_chars': 12_000}
-        )
-        page = tool.content[0]
-        assert isinstance(content, TextResourceContents)
-        assert isinstance(page, TextContent)
-        assert content.text in page.text
-
     async def test_an_unknown_symbol_is_a_resource_error(self, client: Client) -> None:
         with pytest.raises(MCPError, match='Unknown symbol'):
             await client.read_resource(f'python-docs://{DOCS_VERSION}/os.path.nope')
+
+
+class TestPaging:
+    uri = f'python-docs://{DOCS_VERSION}/os.path'
+
+    async def read_resource_text(self, client: Client, uri: str) -> str:
+        resource = await client.read_resource(uri)
+        content = resource.contents[0]
+        assert isinstance(content, TextResourceContents)
+        return content.text
+
+    async def read_tool_text(self, client: Client, offset: int) -> str:
+        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path', 'offset': offset}
+        tool = await client.call_tool(READ_TOOL, arguments)
+        page = tool.content[0]
+        assert isinstance(page, TextContent)
+        return page.text
+
+    def drop_footer(self, text: str) -> str:
+        return text.rpartition('\n\n')[0]
+
+    async def test_a_short_section_is_one_page_that_ends(self, client: Client) -> None:
+        text = await self.read_resource_text(client, self.uri)
+        assert text.splitlines()[-1].startswith('End of section')
+
+    async def test_each_next_offset_reproduces_the_tool_pages_to_the_end(
+        self, long_client: Client
+    ) -> None:
+        pages: list[tuple[str, str]] = []
+        offset = 0
+        while offset is not None:
+            resource = await self.read_resource_text(long_client, f'{self.uri}?offset={offset}')
+            tool = await self.read_tool_text(long_client, offset)
+            pages.append((self.drop_footer(resource), self.drop_footer(tool)))
+            following = NEXT_OFFSET.search(resource.splitlines()[-1])
+            offset = int(following.group(1)) if following else None
+        assert len(pages) > 1
+        assert all(resource == tool for resource, tool in pages)
+
+    async def test_the_footer_names_the_next_resource_uri(self, long_client: Client) -> None:
+        text = await self.read_resource_text(long_client, self.uri)
+        assert f'read {self.uri}?offset=' in text.splitlines()[-1]
+
+    async def test_an_offset_past_the_section_end_is_a_resource_error(self, client: Client) -> None:
+        with pytest.raises(MCPError, match='exceeds the section length'):
+            await client.read_resource(f'{self.uri}?offset=1000000')
+
+    async def test_a_malformed_offset_is_a_resource_error_without_raw_validation_text(
+        self, client: Client
+    ) -> None:
+        with pytest.raises(MCPError, match='offset: ') as raised:
+            await client.read_resource(f'{self.uri}?offset=-1')
+        assert 'pydantic' not in raised.value.error.message
 
 
 class TestVersionCompletions:
@@ -113,6 +173,14 @@ class TestVersionCompletions:
             PromptReference(name='anything'), {'name': 'version', 'value': ''}
         )
         assert result.completion.values == []
+
+
+class TestOffsetCompletions:
+    async def test_the_first_page_is_offered(self, client: Client) -> None:
+        assert await complete(client, 'offset', '', {'version': DOCS_VERSION}) == ['0']
+
+    async def test_a_prefix_that_is_not_zero_offers_nothing(self, client: Client) -> None:
+        assert await complete(client, 'offset', '5', {}) == []
 
 
 class TestSymbolCompletions:

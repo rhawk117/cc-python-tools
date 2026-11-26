@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from python_docs_mcp.stores.catalogs import DocumentationCatalogs
 
 DEFAULT_PAGE_CHARACTERS = 8_000
+TOOL_CONTINUATION = 'call read_python_docs again with offset='
 
 SymbolName = Annotated[
     str,
@@ -48,6 +49,7 @@ class SectionPage:
     text: str
     offset: int
     max_chars: int
+    continuation: str = TOOL_CONTINUATION
 
     @property
     def end(self) -> int:
@@ -70,10 +72,7 @@ class SectionPage:
     def footer(self) -> str:
         total = len(self.text)
         if self.end < total:
-            return (
-                f'More: call read_python_docs again with offset={self.end}'
-                f' ({self.end} of {total} characters shown).'
-            )
+            return f'More: {self.continuation}{self.end} ({self.end} of {total} characters shown).'
         return f'End of section ({total} characters).'
 
     @property
@@ -120,18 +119,31 @@ async def find_symbol(service: DocumentationCatalogs, version: PythonVersion, na
     return find_catalog_symbol(catalog, name, service.settings)
 
 
-async def run(service: DocumentationCatalogs, request: ReadRequest) -> str:
+def get_offset_problem(offset: int, text: str) -> OffsetOutOfRangeError | None:
+    if offset and offset >= len(text):
+        return OffsetOutOfRangeError(offset, len(text))
+
+    return None
+
+
+async def run(
+    service: DocumentationCatalogs,
+    request: ReadRequest,
+    continuation: str = TOOL_CONTINUATION,
+) -> str:
     version = PythonVersion(text=request.version)
     catalog = await service.catalog(version)
     symbol = find_catalog_symbol(catalog, request.symbol, service.settings)
     text = await service.section(symbol)
-    if request.offset and request.offset >= len(text):
-        raise OffsetOutOfRangeError(request.offset, len(text))
+    if problem := get_offset_problem(request.offset, text):
+        raise problem
+
     page = SectionPage(
         symbol=symbol,
         documentation_version=catalog.index.documentation_version,
         text=text,
         offset=request.offset,
         max_chars=request.max_chars,
+        continuation=continuation,
     )
     return page.render()
