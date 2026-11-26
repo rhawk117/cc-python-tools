@@ -209,14 +209,22 @@ class TestConcurrentProgress:
             await self.search_with_progress(client, log, [])
 
     async def test_two_clients_searching_the_same_cold_version_both_get_progress(
-        self, shared: SharedService, run: ClientRun
+        self, held: SharedService, run: ClientRun, watchers: WatcherWait
     ) -> None:
-        async with anyio.create_task_group() as clients:
-            for log in (run.first_log, run.second_log):
-                clients.start_soon(self.search_with_progress, shared.client, log, run.results)
+        with anyio.fail_after(self.bound_seconds):
+            async with anyio.create_task_group() as clients:
+                clients.start_soon(
+                    self.search_with_progress, held.client, run.first_log, run.results
+                )
+                await held.site.wait_until_hold_engaged()
+                clients.start_soon(
+                    self.search_with_progress, held.client, run.second_log, run.results
+                )
+                await watchers.until_ready()
+                held.site.release()
         assert run.results == [True, True]
         assert [bool(run.first_log.events), bool(run.second_log.events)] == [True, True]
-        assert shared.site.request_count(INVENTORY_PATH) == 1
+        assert held.site.request_count(INVENTORY_PATH) == 1
 
     async def test_a_normal_search_logs_no_progress_board_warning(
         self, shared: SharedService, run: ClientRun, caplog: pytest.LogCaptureFixture
