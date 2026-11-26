@@ -125,6 +125,7 @@ class TestPaging:
         self, long_client: Client
     ) -> None:
         pages: list[tuple[str, str]] = []
+        resource = ''
         offset = 0
         while offset is not None:
             resource = await self.read_resource_text(long_client, f'{self.uri}?offset={offset}')
@@ -133,6 +134,7 @@ class TestPaging:
             following = NEXT_OFFSET.search(resource.splitlines()[-1])
             offset = int(following.group(1)) if following else None
         assert len(pages) > 1
+        assert resource.splitlines()[-1].startswith('End of section')
         assert all(resource == tool for resource, tool in pages)
 
     async def test_the_footer_names_the_next_resource_uri(self, long_client: Client) -> None:
@@ -148,6 +150,13 @@ class TestPaging:
     ) -> None:
         with pytest.raises(MCPError, match='offset: ') as raised:
             await client.read_resource(f'{self.uri}?offset=-1')
+        assert 'pydantic' not in raised.value.error.message
+
+    async def test_a_non_numeric_offset_is_a_resource_error_without_raw_validation_text(
+        self, client: Client
+    ) -> None:
+        with pytest.raises(MCPError, match='offset: ') as raised:
+            await client.read_resource(f'{self.uri}?offset=abc')
         assert 'pydantic' not in raised.value.error.message
 
 

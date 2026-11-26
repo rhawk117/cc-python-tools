@@ -126,11 +126,12 @@ def resolve_resource_service() -> DocumentationService:
     return service
 
 
-def create_resource_call_stack(service: DocumentationService) -> MCPCallStack:
+def resolve_resource_call_stack(context: mcpserver.Context[ServerState]) -> MCPCallStack:
+    state = context.request_context.lifespan_context
     return MCPCallStack(
         translator=ErrorTranslator(raises=ResourceError),
-        deadline_seconds=service.settings.call_timeout_seconds,
-        environment=get_config_registry().provide_config().environment,
+        deadline_seconds=state.service.settings.call_timeout_seconds,
+        environment=state.environment,
     )
 
 
@@ -216,9 +217,11 @@ async def read_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schem
     ),
     mime_type='text/markdown',
 )
-async def python_docs(*, version: str, symbol: str, offset: str = '0') -> str:
-    service = resolve_resource_service()
-    call_stack = create_resource_call_stack(service)
+async def python_docs(  # noqa: PLR0913 - MCP builds the resource template's parameters from these keyword parameters
+    *, version: str, symbol: str, offset: str = '0', context: mcpserver.Context[ServerState]
+) -> str:
+    service = context.request_context.lifespan_context.service
+    call_stack = resolve_resource_call_stack(context)
     with call_stack.create_callstack():
         created = create_python_version(version)
         if isinstance(created, InvalidVersionError):
