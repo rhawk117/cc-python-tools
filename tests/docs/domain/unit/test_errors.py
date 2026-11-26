@@ -33,6 +33,7 @@ from python_agent_tools_docs.errors import (
     UnversionedUrlError,
     UpstreamStatusError,
     VersionNotPublishedError,
+    VersionRequiredError,
 )
 
 if TYPE_CHECKING:
@@ -192,6 +193,12 @@ def message_cases() -> pytest.MarkDecorator:
             error=CapacityError('cache', 'page'),
             message='cache must be at least page',
         ),
+        MessageScenario(
+            name='VersionRequiredError',
+            error=VersionRequiredError('no installed Python was found'),
+            message='Pass version, a Python minor version such as 3.13:'
+            ' no default was found because no installed Python was found.',
+        ),
     ]
     return pytest.mark.parametrize('scenario', [scenario.param for scenario in scenarios])
 
@@ -224,7 +231,7 @@ class TestErrors:
         assert issubclass(error_class, DocumentationToolsError)
 
     def test_every_source_error_class_exists(self) -> None:
-        assert len(error_classes()) == 28
+        assert len(error_classes()) == 29
 
     def test_permanent_miss_is_a_documentation_error(self) -> None:
         assert issubclass(VersionNotPublishedError, PermanentMissError)
