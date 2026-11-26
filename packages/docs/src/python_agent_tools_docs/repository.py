@@ -59,7 +59,9 @@ def response_failure(response: httpx2.Response) -> DocumentationError | None:
 
 def declared_length(response: httpx2.Response) -> int | None:
     declared = response.headers.get('content-length', '')
-    return int(declared) if declared.isdecimal() else None
+    if not declared.isdecimal():
+        return None
+    return int(declared)
 
 
 async def bounded_body(

@@ -1,4 +1,7 @@
-"""Tunable limits for retrieval, caching, and matching; overridable per environment."""
+"""Tunable limits for retrieval, caching, and matching; overridable per environment.
+
+Environment overrides use PYTHON_DOCS_<FIELD_NAME>; sizes are bytes.
+"""
 
 from typing import Annotated, NamedTuple, Self
 
@@ -38,8 +41,6 @@ CAPACITY_RULES = (
 
 
 class Settings(BaseSettings):
-    """Environment overrides use PYTHON_DOCS_<FIELD_NAME>; sizes are bytes."""
-
     model_config = SettingsConfigDict(env_prefix='PYTHON_DOCS_', frozen=True, extra='forbid')
 
     download_max_bytes: PositiveCount = 8 * pow(1024, 2)

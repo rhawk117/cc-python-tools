@@ -1,4 +1,7 @@
-"""Read-through caches whose fills belong to the server, not to the first caller."""
+"""Read-through caches whose fills belong to the server, not to the first caller.
+
+A CachedLoader serves a single event loop; worker threads must not access an instance.
+"""
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -34,19 +37,15 @@ class PendingFill[V]:
     outcome: FillSucceeded[V] | FillFailed | None = None
 
     def result(self) -> V:
-        match self.outcome:
-            case FillSucceeded(value=value):
-                return value
-            case FillFailed(error=error):
-                raise error.with_traceback(None)
-            case None:
-                raise FillInterruptedError
+        if isinstance(self.outcome, FillSucceeded):
+            return self.outcome.value
+        if isinstance(self.outcome, FillFailed):
+            raise self.outcome.error.with_traceback(None)
+        raise FillInterruptedError
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
 class CachedLoader[K: Hashable, V]:
-    """Single-event-loop cache; worker threads must not access this instance."""
-
     values: TTLCache[K, V]
     misses: TTLCache[K, PermanentMissError]
     loader: Callable[[K], Awaitable[V]]
@@ -98,8 +97,7 @@ class CachedLoader[K: Hashable, V]:
         return self.values.getsizeof(value) <= self.values.maxsize
 
     def remember(self, key: K, outcome: FillSucceeded[V] | FillFailed | None) -> None:
-        match outcome:
-            case FillSucceeded(value=value) if self.fits(value):
-                self.values[key] = value
-            case FillFailed(error=PermanentMissError() as miss):
-                self.misses[key] = miss
+        if isinstance(outcome, FillSucceeded) and self.fits(outcome.value):
+            self.values[key] = outcome.value
+        if isinstance(outcome, FillFailed) and isinstance(outcome.error, PermanentMissError):
+            self.misses[key] = outcome.error

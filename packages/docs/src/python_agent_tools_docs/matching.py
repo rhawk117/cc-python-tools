@@ -89,7 +89,9 @@ def query_forms(query: str) -> list[tuple[str, ...]]:
     if not segments:
         return []
     joined = (''.join(segments),)
-    return [segments, joined] if len(segments) > 1 else [segments]
+    if len(segments) > 1:
+        return [segments, joined]
+    return [segments]
 
 
 def precise_names(catalog: SymbolCatalog, query: str) -> list[str]:
@@ -138,7 +140,9 @@ def symbol_match(catalog: SymbolCatalog, name: str, tier: MatchTier) -> SymbolMa
 
 
 def precise_tier(name: str, query: str) -> MatchTier:
-    return MatchTier.EXACT if name.casefold() == query.casefold() else MatchTier.PREFIX
+    if name.casefold() == query.casefold():
+        return MatchTier.EXACT
+    return MatchTier.PREFIX
 
 
 def match_symbols(catalog: SymbolCatalog, query: str, cutoff: float) -> list[SymbolMatch]:

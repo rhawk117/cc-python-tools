@@ -69,7 +69,9 @@ def load_inventory(plaintext: bytes) -> Inventory:
 
 def expanded_uri(entry: DataObjStr) -> str:
     uri = str(entry.uri)
-    return uri.removesuffix('$') + str(entry.name) if uri.endswith('$') else uri
+    if not uri.endswith('$'):
+        return uri
+    return uri.removesuffix('$') + str(entry.name)
 
 
 def entry_url(entry: DataObjStr, version: PythonVersion) -> DocumentationUrl | None:
@@ -79,7 +81,9 @@ def entry_url(entry: DataObjStr, version: PythonVersion) -> DocumentationUrl | N
     url = create_documentation_url(urljoin(version.base_url, uri))
     if not isinstance(url, DocumentationUrl):
         return None
-    return url if url.version == version else None
+    if url.version != version:
+        return None
+    return url
 
 
 def is_indexed(url: DocumentationUrl, settings: Settings) -> bool:
