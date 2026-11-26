@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import anyio
 import httpx2
 import pytest
 from python_agent_tools_docs.domain import (
@@ -13,6 +14,7 @@ from python_agent_tools_docs.errors import (
     PageNotFoundError,
     RetrievalFailedError,
     UpstreamStatusError,
+    VersionNotPublishedError,
 )
 from python_agent_tools_docs.repository import (
     DocumentationSource,
@@ -22,6 +24,7 @@ from python_agent_tools_docs.repository import (
 from python_agent_tools_docs.settings import Settings
 
 from tests.docs.support.docs_site import DocsSite
+from tests.docs.support.samples import DOCS_VERSION, standard_pages
 
 PAGE_PATH = '/3.13/library/os.path.html'
 REDIRECT_TARGET = 'https://example.com/elsewhere'
@@ -45,9 +48,18 @@ class SourceHarness:
     source: DocumentationSource
 
 
+def create_source(client: httpx2.AsyncClient, settings: Settings) -> DocumentationSource:
+    return DocumentationSource(
+        client=client,
+        downloads=anyio.CapacityLimiter(settings.download_concurrency),
+        parsers=anyio.CapacityLimiter(settings.parse_concurrency),
+        settings=settings,
+    )
+
+
 def create_harness(site: DocsSite, settings: Settings) -> SourceHarness:
     client = documentation_http_client(settings, site.transport())
-    return SourceHarness(site=site, source=DocumentationSource(client=client, settings=settings))
+    return SourceHarness(site=site, source=create_source(client, settings))
 
 
 class TestInventoryUrl:
@@ -97,6 +109,29 @@ class TestFetch:
             raise httpx2.ConnectError(message, request=request)
 
         client = documentation_http_client(settings, httpx2.MockTransport(refuse))
-        source = DocumentationSource(client=client, settings=settings)
+        source = create_source(client, settings)
         with pytest.raises(RetrievalFailedError, match=self.page_url.text):
             await source.fetch(self.page_url)
+
+
+class TestCatalog:
+    version = make_version(DOCS_VERSION)
+
+    async def test_catalog_holds_the_version_symbols(self) -> None:
+        settings = Settings()
+        harness = create_harness(DocsSite(pages=standard_pages()), settings)
+        catalog = await harness.source.catalog(self.version)
+        assert 'os.path.join' in catalog.index.symbols
+        assert harness.site.request_count(f'/{DOCS_VERSION}/objects.inv') == 1
+
+    async def test_unpublished_version_is_named(self) -> None:
+        harness = create_harness(DocsSite(pages={}), Settings())
+        with pytest.raises(VersionNotPublishedError, match=DOCS_VERSION):
+            await harness.source.catalog(self.version)
+
+
+class TestLimiters:
+    def test_limiters_are_sized_by_settings(self) -> None:
+        settings = Settings(download_concurrency=2, parse_concurrency=3)
+        source = create_source(documentation_http_client(settings), settings)
+        assert (source.downloads.total_tokens, source.parsers.total_tokens) == (2, 3)
