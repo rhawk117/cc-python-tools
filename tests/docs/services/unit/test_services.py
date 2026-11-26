@@ -57,9 +57,6 @@ class RecordingStore:
     def write(self, version: PythonVersion, content: bytes) -> None:
         self.writes[version.text] = content
 
-    def contains(self, version: PythonVersion) -> bool:
-        return self.read(version) is not None
-
 
 @asynccontextmanager
 async def run_harness(
@@ -149,6 +146,24 @@ class TestStoredCatalog:
             catalog = await harness.service.stored_catalog(self.version)
         assert catalog is not None
         assert 'os.path.join' in catalog.index.symbols
+
+
+class TestStoredCatalogCaching:
+    version = make_version(DOCS_VERSION)
+
+    async def test_a_second_completion_does_not_parse_again(self) -> None:
+        store = RecordingStore(stored=standard_pages()[INVENTORY_PATH])
+        async with run_harness({}, store) as harness:
+            first = await harness.service.stored_catalog(self.version)
+            store.stored = None
+            second = await harness.service.stored_catalog(self.version)
+        assert first is not None
+        assert second is first
+
+    async def test_the_parser_limiter_is_sized_by_settings(self) -> None:
+        options = ServiceOptions(transport=DocsSite(pages={}).transport())
+        async with open_documentation_service(Settings(parse_concurrency=3), options) as service:
+            assert service.loader.parsers.total_tokens == 3
 
 
 class TestSection:

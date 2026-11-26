@@ -1,5 +1,7 @@
+import os
 import stat
 from dataclasses import dataclass
+from io import BytesIO
 from typing import TYPE_CHECKING
 
 import pytest
@@ -35,6 +37,24 @@ class Clock:
         return self.now
 
 
+@dataclass(slots=True, kw_only=True)
+class ClosingFails:
+    descriptor: int
+
+    def __enter__(self) -> BytesIO:
+        return BytesIO()
+
+    def __exit__(self, *_: object) -> None:
+        os.close(self.descriptor)
+        message = 'close failed'
+        raise OSError(message)
+
+
+def failing_close(descriptor: int, mode: str) -> ClosingFails:
+    assert mode == 'wb'
+    return ClosingFails(descriptor=descriptor)
+
+
 def make_version(text: str) -> PythonVersion:
     version = create_python_version(text)
     assert isinstance(version, PythonVersion)
@@ -65,11 +85,9 @@ class TestInventoryStore:
     def test_written_bytes_are_read_back(self, store: InventoryStore) -> None:
         store.write(self.version, self.content)
         assert store.read(self.version) == self.content
-        assert store.contains(self.version)
 
     def test_an_unknown_version_is_absent(self, store: InventoryStore) -> None:
         assert store.read(self.version) is None
-        assert not store.contains(self.version)
 
     def test_a_truncated_copy_is_deleted(self, store: InventoryStore, data_directory: Path) -> None:
         store.write(self.version, self.content)
@@ -104,7 +122,6 @@ class TestInventoryStore:
         store = create_inventory_store({}, self.ttl_seconds, clock.read)
         store.write(self.version, self.content)
         assert store.read(self.version) is None
-        assert not store.contains(self.version)
         assert list(tmp_path.iterdir()) == []
 
 
@@ -138,6 +155,15 @@ class TestUnusableDataDirectory:
         store.write(self.version, self.content)
         leftovers = [path for path in cache_directory.iterdir() if path.suffix not in SUFFIXES]
         assert leftovers == []
+
+    def test_a_failing_close_leaves_no_temporary_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        store = self.store_for(tmp_path)
+        monkeypatch.setattr(os, 'fdopen', failing_close)
+        store.write(self.version, self.content)
+        cache_directory = tmp_path.joinpath(CACHE_DIRECTORY)
+        assert list(cache_directory.iterdir()) == []
 
     def test_an_unreadable_entry_is_a_miss(self, tmp_path: Path) -> None:
         store = self.store_for(tmp_path)

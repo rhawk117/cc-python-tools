@@ -157,12 +157,9 @@ class ExpiredEntryStore:
 
     def write(self, version: PythonVersion, content: bytes) -> None: ...
 
-    def contains(self, version: PythonVersion) -> bool:
-        return version.text == DOCS_VERSION
-
 
 class TestExpiredEntryRace:
-    async def test_an_entry_that_expires_after_the_presence_check_starts_no_fetch(
+    async def test_an_expired_stored_entry_yields_no_values_and_no_request(
         self, site: DocsSite
     ) -> None:
         options = ServiceOptions(transport=site.transport(), store=ExpiredEntryStore())

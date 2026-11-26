@@ -1,6 +1,7 @@
 """On-disk cache of fetched inventory bytes under the plugin data directory."""
 
 import hashlib
+import os
 import tempfile
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
@@ -23,17 +24,12 @@ class InventoryStore(Protocol):
 
     def write(self, version: PythonVersion, content: bytes) -> None: ...
 
-    def contains(self, version: PythonVersion) -> bool: ...
-
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class NullInventoryStore:
     def read(self, version: PythonVersion) -> bytes | None: ...
 
     def write(self, version: PythonVersion, content: bytes) -> None: ...
-
-    def contains(self, version: PythonVersion) -> bool:
-        return self.read(version) is not None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -86,10 +82,10 @@ def removed_on_error(path: Path) -> Generator[None]:
 
 
 def replace_atomically(target: Path, content: bytes) -> None:
-    with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as handle:
-        temporary = Path(handle.name)
-        with removed_on_error(temporary):
-            handle.write(content)
+    descriptor, name = tempfile.mkstemp(dir=target.parent)
+    temporary = Path(name)
+    with removed_on_error(temporary), os.fdopen(descriptor, 'wb') as handle:
+        handle.write(content)
     with removed_on_error(temporary):
         temporary.replace(target)
 
@@ -128,9 +124,6 @@ class DiskInventoryStore:
             self.root.mkdir(parents=True, exist_ok=True)
             replace_atomically(paths.digest, digest_of(content))
             replace_atomically(paths.data, content)
-
-    def contains(self, version: PythonVersion) -> bool:
-        return self.read(version) is not None
 
 
 def create_inventory_store(

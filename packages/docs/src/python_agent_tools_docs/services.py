@@ -11,6 +11,7 @@ from python_agent_tools_docs.extraction import extract_markdown
 from python_agent_tools_docs.inventory import parse_inventory
 from python_agent_tools_docs.matching import catalog_symbols
 from python_agent_tools_docs.progress import SilentReporter
+from python_agent_tools_docs.store import FillSucceeded
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -95,7 +96,9 @@ class DocumentationService:
         if stored is None:
             return None
 
-        return await self.loader.parse(stored, version)
+        catalog = await self.loader.parse(stored, version)
+        self.catalogs.remember(version, FillSucceeded(catalog))
+        return catalog
 
     async def section(self, symbol: Symbol) -> str:
         return await self.sections.get(symbol.source_url)
