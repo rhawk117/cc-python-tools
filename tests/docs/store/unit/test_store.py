@@ -25,7 +25,7 @@ KEY = 'key'
 @dataclass(slots=True, kw_only=True)
 class RecordingLoader:
     delay_seconds: float = 0
-    failure: DocumentationError | None = None
+    failure: Exception | None = None
     calls: int = 0
 
     async def load(self, key: str) -> str:
@@ -63,11 +63,12 @@ def create_cache(
     )
 
 
-class TestCachedLoader:
-    @pytest.fixture
-    def clock(self) -> Clock:
-        return Clock()
+@pytest.fixture
+def clock() -> Clock:
+    return Clock()
 
+
+class TestCachedLoader:
     async def outcome(self, cache: CachedLoader[str, str]) -> str | DocumentationError:
         try:
             return await cache.get(KEY)
@@ -132,6 +133,17 @@ class TestCachedLoader:
         cache = create_cache(loader, fills, clock)
         outcomes = [await self.outcome(cache), await self.outcome(cache)]
         assert (outcomes, loader.calls) == ([failure, failure], 2)
+
+    async def test_a_non_documentation_error_fails_only_its_own_key(
+        self, fills: TaskGroup, clock: Clock
+    ) -> None:
+        failure = RuntimeError('boom')
+        loader = RecordingLoader(failure=failure)
+        cache = create_cache(loader, fills, clock)
+        with pytest.raises(RuntimeError) as raised:
+            await cache.get(KEY)
+        loader.failure = None
+        assert (raised.value, await cache.get('other')) == (failure, 'value:other')
 
     async def test_an_oversized_value_is_served_but_not_cached(
         self, fills: TaskGroup, clock: Clock

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import anyio
 
 from python_agent_tools_docs.errors import (
-    DocumentationError,
     FillInterruptedError,
     FillTimeoutError,
     PermanentMissError,
@@ -26,7 +25,7 @@ class FillSucceeded[V]:
 
 @dataclass(frozen=True, slots=True)
 class FillFailed:
-    error: DocumentationError
+    error: Exception
 
 
 @dataclass(slots=True, kw_only=True, eq=False)
@@ -75,7 +74,7 @@ class CachedLoader[K: Hashable, V]:
     async def fill(self, key: K, pending: PendingFill[V]) -> None:
         try:
             pending.outcome = await self.load_within_deadline(key)
-        except DocumentationError as error:
+        except Exception as error:  # noqa: BLE001 - every waiter receives the failure through its PendingFill
             pending.outcome = FillFailed(error)
         finally:
             self.settle(key, pending)
