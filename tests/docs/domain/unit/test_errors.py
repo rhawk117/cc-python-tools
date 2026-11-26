@@ -1,3 +1,4 @@
+import inspect
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -204,12 +205,10 @@ def message_cases() -> pytest.MarkDecorator:
 
 
 def error_classes() -> list[type[DocumentationToolsError]]:
-    members = vars(errors).values()
     return [
         member
-        for member in members
-        if isinstance(member, type)
-        and issubclass(member, DocumentationToolsError)
+        for _, member in inspect.getmembers(errors, inspect.isclass)
+        if issubclass(member, DocumentationToolsError)
         and member is not DocumentationToolsError
         and member.__module__ == errors.__name__
     ]
