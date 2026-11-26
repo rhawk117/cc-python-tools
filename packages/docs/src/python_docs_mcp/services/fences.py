@@ -59,5 +59,7 @@ def scan_fence(text: str, fence: Fence | None = None) -> Fence | None:
 
 
 def fence_before(text: str, offset: int) -> Fence | None:
-    complete_lines = text[:offset].rpartition('\n')[0]
-    return scan_fence(complete_lines)
+    head = text[:offset]
+    if text[offset : offset + 1] not in {'\n', ''}:
+        head = head.rpartition('\n')[0]
+    return scan_fence(head)

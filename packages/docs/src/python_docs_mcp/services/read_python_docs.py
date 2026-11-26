@@ -51,7 +51,12 @@ class SectionPage:
 
     @property
     def end(self) -> int:
-        return min(self.offset + self.max_chars, len(self.text))
+        limit = self.offset + self.max_chars
+        if limit >= len(self.text):
+            return len(self.text)
+
+        newline = self.text.rfind('\n', self.offset, limit)
+        return newline + 1 if newline >= 0 else limit
 
     @property
     def header(self) -> str:

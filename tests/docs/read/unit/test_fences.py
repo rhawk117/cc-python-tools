@@ -43,6 +43,11 @@ class TestFenceBefore:
     def test_an_offset_after_a_closed_fence_returns_none(self) -> None:
         assert fence_before(self.text, len('```py\ncode\n```\n')) is None
 
+    def test_an_offset_at_the_end_of_a_complete_closing_line_counts_the_fence_as_closed(
+        self,
+    ) -> None:
+        assert fence_before(self.text, len('```py\ncode\n```')) is None
+
 
 class TestScanFence:
     def test_a_partial_last_line_counts_as_a_line(self) -> None:
