@@ -5,6 +5,8 @@ from io import BytesIO
 from typing import TYPE_CHECKING
 
 import pytest
+from hypothesis import example, given
+from hypothesis import strategies as st
 from python_agent_tools_core.version import PythonVersion, create_python_version
 from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
 from python_docs_mcp.schemas.settings import Settings
@@ -14,6 +16,7 @@ from python_docs_mcp.stores.disk_cache import (
     create_inventory_store,
 )
 
+from tests.docs.support.clock import FakeClock
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages
 
@@ -23,7 +26,6 @@ if TYPE_CHECKING:
 
     from python_docs_mcp.stores.disk_cache import InventoryStore
 
-    from tests.docs.support.clock import FakeClock
     from tests.docs.support.server import ServerHarness
 
 SUFFIXES = {'.inv', '.sha256'}
@@ -80,8 +82,11 @@ class TestInventoryStore:
     version = make_version(DOCS_VERSION)
     content = b'inventory bytes'
 
-    def test_written_bytes_are_read_back(self, store: InventoryStore) -> None:
+    def test_written_bytes_are_read_back(
+        self, store: InventoryStore, data_directory: Path, clock: FakeClock
+    ) -> None:
         store.write(self.version, self.content)
+        clock.set_epoch(data_file_of(data_directory).stat().st_mtime)
         assert store.read(self.version) == self.content
 
     def test_an_unknown_version_is_absent(self, store: InventoryStore) -> None:
@@ -131,6 +136,41 @@ class TestRejectedEntries:
         clock.set_epoch(data_file.stat().st_mtime + file_age_seconds)
         assert store.read(self.version) is None
         assert cached_files(data_directory) == []
+
+
+class TestEntryAge:
+    version = make_version(DOCS_VERSION)
+    content = b'inventory bytes'
+    stamp = 1_700_000_000
+    future_ages = st.integers(min_value=1, max_value=10**6)
+    fresh_ages = st.integers(min_value=0, max_value=int(TTL_SECONDS))
+
+    def read_entry_aged(self, root: Path, age_seconds: int) -> bytes | None:
+        environment = {DATA_DIRECTORY_VARIABLE: str(root)}
+        clock = FakeClock()
+        store = create_inventory_store(environment, TTL_SECONDS, clock)
+        store.write(self.version, self.content)
+        data_file = data_file_of(root)
+        os.utime(data_file, (self.stamp, self.stamp))
+        clock.set_epoch(self.stamp + age_seconds)
+        return store.read(self.version)
+
+    @given(age_seconds=future_ages)
+    def test_an_entry_stamped_in_the_future_is_stale_and_deleted(
+        self, tmp_path_factory: pytest.TempPathFactory, age_seconds: int
+    ) -> None:
+        root = tmp_path_factory.mktemp('future')
+        assert self.read_entry_aged(root, -age_seconds) is None
+        assert cached_files(root) == []
+
+    @given(age_seconds=fresh_ages)
+    @example(age_seconds=0)
+    @example(age_seconds=int(TTL_SECONDS))
+    def test_an_entry_within_the_ttl_is_fresh(
+        self, tmp_path_factory: pytest.TempPathFactory, age_seconds: int
+    ) -> None:
+        root = tmp_path_factory.mktemp('fresh')
+        assert self.read_entry_aged(root, age_seconds) == self.content
 
 
 class TestUnusableDataDirectory:

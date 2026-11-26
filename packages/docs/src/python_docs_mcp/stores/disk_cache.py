@@ -110,7 +110,8 @@ class DiskInventoryStore:
     clock: ClockInterface
 
     def is_fresh(self, entry: StoredEntry) -> bool:
-        return self.clock.epoch_now() - entry.modified <= self.ttl_seconds
+        age_seconds = self.clock.epoch_now() - entry.modified
+        return 0 <= age_seconds <= self.ttl_seconds
 
     def read(self, version: PythonVersion) -> bytes | None:
         paths = entry_paths(self.root, version)
