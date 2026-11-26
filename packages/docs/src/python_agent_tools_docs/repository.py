@@ -14,6 +14,7 @@ from python_agent_tools_docs.errors import (
     UpstreamStatusError,
     VersionNotPublishedError,
 )
+from python_agent_tools_docs.extraction import extract_markdown
 from python_agent_tools_docs.inventory import parse_inventory
 from python_agent_tools_docs.matching import catalog_symbols
 
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from python_agent_tools_docs.errors import DocumentationError
     from python_agent_tools_docs.matching import SymbolCatalog
     from python_agent_tools_docs.settings import Settings
+    from python_agent_tools_docs.store import CachedLoader
 
 
 def documentation_http_client(
@@ -100,3 +102,13 @@ class DocumentationSource:
         return await anyio.to_thread.run_sync(
             build_catalog, content, version, self.settings, limiter=self.parsers
         )
+
+
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class SectionLoader:
+    pages: CachedLoader[DocumentationUrl, bytes]
+    parsers: anyio.CapacityLimiter
+
+    async def load(self, url: DocumentationUrl) -> str:
+        content = await self.pages.get(url.page_url)
+        return await anyio.to_thread.run_sync(extract_markdown, content, url, limiter=self.parsers)
