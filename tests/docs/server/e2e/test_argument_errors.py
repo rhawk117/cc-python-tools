@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING
 
 import anyio
 import pytest
@@ -6,7 +6,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from mcp import Client
 from mcp.types import TextContent
-from python_docs_mcp.app import TOOL_ARGUMENT_MODELS, ToolName
+from python_docs_mcp.app import TOOL_ARGUMENT_MODELS
 from python_docs_mcp.lifespan import ServiceOptions, get_config_registry
 
 from tests.docs.support.docs_site import DocsSite
@@ -25,7 +25,7 @@ PYDANTIC_MARKERS = ('validation error for', 'errors.pydantic.dev')
 
 
 def tool_name_cases() -> pytest.MarkDecorator:
-    members: list[ParameterSet] = [pytest.param(name, id=name) for name in get_args(ToolName)]
+    members: list[ParameterSet] = [pytest.param(name, id=name) for name in TOOL_ARGUMENT_MODELS]
     return pytest.mark.parametrize('tool_name', members)
 
 
@@ -46,19 +46,20 @@ def invoke(tool: str, arguments: dict[str, object]) -> CallToolResult:
     return anyio.run(call_tool, tool, arguments)
 
 
+@pytest.fixture
+async def client(harness: ServerHarness) -> AsyncGenerator[Client]:
+    options = ServiceOptions(transport=DocsSite(pages=standard_pages()).transport())
+    async with harness.connect(options=options) as client:
+        assert isinstance(client, Client)
+        yield client
+
+
 class TestArgumentErrors:
     out_of_range_limits = st.one_of(st.integers(max_value=0), st.integers(min_value=31))
     negative_offsets = st.integers(max_value=-1)
     out_of_range_page_sizes = st.one_of(st.integers(max_value=499), st.integers(min_value=12_001))
     valid_limits = st.integers(min_value=1, max_value=30)
     valid_queries = st.text(alphabet='abcdefghij._', min_size=1, max_size=40)
-
-    @pytest.fixture
-    async def client(self, harness: ServerHarness) -> AsyncGenerator[Client]:
-        options = ServiceOptions(transport=DocsSite(pages=standard_pages()).transport())
-        async with harness.connect(options=options) as client:
-            assert isinstance(client, Client)
-            yield client
 
     def assert_field_error(self, result: CallToolResult, field: str) -> None:
         text = first_text(result)
@@ -105,7 +106,7 @@ class TestArgumentErrors:
 
     @tool_name_cases()
     async def test_the_model_matches_the_advertised_schema(
-        self, client: Client, tool_name: ToolName
+        self, client: Client, tool_name: str
     ) -> None:
         listed = await client.list_tools()
         tool: Tool = next(tool for tool in listed.tools if tool.name == tool_name)
@@ -116,3 +117,16 @@ class TestArgumentErrors:
         )
         modeled = (set(schema['properties']), set(schema.get('required', [])))
         assert advertised == modeled
+
+
+class TestUnmappedTools:
+    async def test_a_tool_absent_from_the_map_passes_through_to_the_server_handler(
+        self, client: Client
+    ) -> None:
+        result = await client.call_tool('no_such_tool', {'limit': 0})
+        text = first_text(result)
+        assert (result.is_error, 'no_such_tool' in text, text.startswith('limit: ')) == (
+            True,
+            True,
+            False,
+        )

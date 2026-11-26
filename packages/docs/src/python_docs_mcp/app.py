@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated
 
 from mcp.server import mcpserver
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
@@ -64,8 +64,6 @@ ProjectVersionText = Annotated[
     ),
 ]
 
-ToolName = Literal['search_python_docs', 'read_python_docs']
-
 
 class SearchArguments(BaseModel):
     version: ProjectVersionText | None = None
@@ -80,7 +78,7 @@ class ReadArguments(BaseModel):
     max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS
 
 
-TOOL_ARGUMENT_MODELS: Mapping[ToolName, type[BaseModel]] = MappingProxyType({
+TOOL_ARGUMENT_MODELS: Mapping[str, type[BaseModel]] = MappingProxyType({
     'search_python_docs': SearchArguments,
     'read_python_docs': ReadArguments,
 })
