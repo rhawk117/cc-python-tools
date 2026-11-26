@@ -8,6 +8,8 @@ if TYPE_CHECKING:
 COMMAND = [
     'uv',
     'run',
+    '--isolated',
+    '--quiet',
     '--locked',
     '--no-dev',
     '--package',

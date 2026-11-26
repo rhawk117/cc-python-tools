@@ -7,6 +7,7 @@ class TestEntryPoint:
         command='uv',
         args=(
             'run',
+            '--isolated',
             '--locked',
             '--no-dev',
             '--package',
