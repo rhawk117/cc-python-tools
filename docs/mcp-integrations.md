@@ -25,8 +25,10 @@ Claude Code changes major behaviour.
   parameter annotated `Context` (`find_context_parameter`,
   `mcp/server/mcpserver/utilities/context_injection.py:13`; `tools/base.py:88-89`). There is no
   context variable to read it from, and the parameter is left out of the input schema. Under
-  ruff `max-args = 3` this cost a `PLR0913` noqa on each docs tool
-  (`packages/docs/src/python_docs_mcp/server.py:97` and `:115`).
+  ruff `max-args = 3` this cost a `PLR0913` noqa on the docs resource
+  (`packages/docs/src/python_docs_mcp/app.py:114`). The docs tools avoid it: they receive the
+  context through `Resolve` dependencies (`ToolServiceDep`, `ToolCallStackDep`), whose resolvers
+  take the `Context` (`packages/docs/src/python_docs_mcp/resolve.py:66` and `:80`).
 - **Confirmed:** `Context.report_progress(progress, total=None, message=None)`
   (`mcp/server/mcpserver/context.py:120`) is a no-op when the caller sent no progress token
   (`report_progress` docstring, `mcp/server/session.py:429`). A client opts in by passing
@@ -39,7 +41,7 @@ Claude Code changes major behaviour.
   (`server.py:739`) registers the one `completion/complete` handler, called with
   `(ref, argument, context)`. See `tests/docs/server/e2e/test_resources.py`.
 - **Confirmed:** `ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)`
-  (`READ_ONLY_REMOTE`, `packages/docs/src/python_docs_mcp/server.py:44`) serializes as
+  (`READ_ONLY_REMOTE`, `packages/docs/src/python_docs_mcp/app.py:41`) serializes as
   `readOnlyHint`, `idempotentHint` and `openWorldHint`. Checked on 2026-11-25 with
   `ToolAnnotations(...).model_dump(by_alias=True, exclude_none=True)`, which printed
   `{'readOnlyHint': True, 'idempotentHint': True, 'openWorldHint': True}`.
