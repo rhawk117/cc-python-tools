@@ -222,3 +222,13 @@ class TestFailureIdentity:
             type(second),
             str(second),
         )
+
+    async def test_a_note_added_to_one_clone_does_not_reach_the_original_or_other_clones(
+        self, fills: TaskGroup, clock: FakeClock
+    ) -> None:
+        original = VersionNotPublishedError('3.99')
+        original.add_note('original')
+        cache = create_cache(RecordingLoader(failure=original), fills, clock)
+        first, second = await self.failure(cache), await self.failure(cache)
+        first.add_note('first')
+        assert (original.__notes__, second.__notes__) == (['original'], ['original'])

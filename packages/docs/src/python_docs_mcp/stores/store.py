@@ -27,6 +27,8 @@ def clone_failure(error: Exception) -> Exception:
     clone = type(error).__new__(type(error))
     clone.args = error.args
     clone.__dict__.update(error.__dict__)
+    if hasattr(error, '__notes__'):
+        clone.__notes__ = list(error.__notes__)
     clone.__cause__ = error
     return clone
 
