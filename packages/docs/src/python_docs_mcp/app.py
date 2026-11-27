@@ -1,27 +1,22 @@
 """The python-docs-mcp server: the tools, the resource and the completions declared in one place."""
 
-from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Annotated
 from urllib.parse import quote
 
 from mcp.server import mcpserver
-from mcp.server.mcpserver.exceptions import ResourceError, ToolError
-from mcp.server.mcpserver.resolve import Resolve
+from mcp.server.mcpserver.exceptions import ResourceError
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field, ValidationError
-from python_agent_tools_core.exception import InvalidVersionError, VersionRequiredError
-from python_agent_tools_core.project import resolve_floor
+from python_agent_tools_core.exception import InvalidVersionError
 from python_agent_tools_core.version import create_python_version
 
-from python_docs_mcp.core.exception import ServiceUnavailableError
+from python_docs_mcp import resolve
 from python_docs_mcp.lifespan import (
     ServerLifespan,
     ServerState,
     get_config_registry,
-    get_service_registry,
 )
-from python_docs_mcp.resolve import ErrorTranslator, MCPCallStack
 from python_docs_mcp.schemas.base import VersionText
 from python_docs_mcp.server import ArgumentErrorExtension, ArgumentErrorFormatter
 from python_docs_mcp.services import read_python_docs as read_use_case
@@ -30,7 +25,6 @@ from python_docs_mcp.services.completions import (
     RESOURCE_URI,
     DocumentationCompletions,
 )
-from python_docs_mcp.services.documentation_service import DocumentationService
 from python_docs_mcp.services.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
 from python_docs_mcp.services.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
 
@@ -96,60 +90,6 @@ TOOL_ARGUMENT_MODELS: Mapping[str, type[BaseModel]] = MappingProxyType({
 })
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class ContextReporter:
-    context: mcpserver.Context[ServerState]
-
-    async def report(self, read: int, total: int | None) -> None:
-        await self.context.report_progress(read, total)
-
-
-def resolve_tool_service(context: mcpserver.Context[ServerState]) -> DocumentationService:
-    state = context.request_context.lifespan_context
-    return state.service.reporting_to(ContextReporter(context=context))
-
-
-def resolve_tool_call_stack(context: mcpserver.Context[ServerState]) -> MCPCallStack:
-    state = context.request_context.lifespan_context
-    return MCPCallStack(
-        translator=ErrorTranslator(raises=ToolError),
-        deadline_seconds=state.service.settings.call_timeout_seconds,
-        environment=state.environment,
-    )
-
-
-def resolve_resource_service() -> DocumentationService:
-    service = get_service_registry().get_service()
-    if service is None:
-        raise ServiceUnavailableError
-
-    return service
-
-
-def resolve_resource_call_stack(context: mcpserver.Context[ServerState]) -> MCPCallStack:
-    state = context.request_context.lifespan_context
-    return MCPCallStack(
-        translator=ErrorTranslator(raises=ResourceError),
-        deadline_seconds=state.service.settings.call_timeout_seconds,
-        environment=state.environment,
-    )
-
-
-def resolve_version(environment: Mapping[str, str], version: str | None) -> str:
-    if version is not None:
-        return version
-
-    floor = resolve_floor(environment)
-    if isinstance(floor, VersionRequiredError):
-        raise floor
-
-    return floor.text
-
-
-ToolServiceDep = Annotated[DocumentationService, Resolve(resolve_tool_service)]
-ToolCallStackDep = Annotated[MCPCallStack, Resolve(resolve_tool_call_stack)]
-
-
 def create_server(*, settings: Settings | None = None) -> mcpserver.MCPServer[ServerState]:
     return mcpserver.MCPServer[ServerState](
         SERVER_NAME,
@@ -168,8 +108,8 @@ async def search_python_docs(  # noqa: PLR0913 - MCP builds the tool's input sch
     version: ProjectVersionText | None = None,
     query: search_use_case.SymbolQuery,
     limit: search_use_case.SearchLimit = DEFAULT_SEARCH_LIMIT,
-    service: ToolServiceDep,
-    call_stack: ToolCallStackDep,
+    service: resolve.ToolServiceDep,
+    call_stack: resolve.ToolCallStackDep,
 ) -> search_use_case.SearchResult:
     """Find official Python standard-library symbols by name for one Python version.
 
@@ -178,7 +118,9 @@ async def search_python_docs(  # noqa: PLR0913 - MCP builds the tool's input sch
     """
     with call_stack.create_callstack():
         request = SearchRequest(
-            version=resolve_version(call_stack.environment, version), query=query, limit=limit
+            version=resolve.resolve_version(call_stack.environment, version),
+            query=query,
+            limit=limit,
         )
         return await search_use_case.run(service, request)
 
@@ -190,8 +132,8 @@ async def read_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schem
     symbol: read_use_case.SymbolName,
     offset: read_use_case.PageOffset = 0,
     max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS,
-    service: ToolServiceDep,
-    call_stack: ToolCallStackDep,
+    service: resolve.ToolServiceDep,
+    call_stack: resolve.ToolCallStackDep,
 ) -> str:
     """Read one symbol's official documentation as Markdown, one page at a time.
 
@@ -200,7 +142,7 @@ async def read_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schem
     """
     with call_stack.create_callstack():
         request = ReadRequest(
-            version=resolve_version(call_stack.environment, version),
+            version=resolve.resolve_version(call_stack.environment, version),
             symbol=symbol,
             offset=offset,
             max_chars=max_chars,
@@ -221,7 +163,7 @@ async def python_docs(  # noqa: PLR0913 - MCP builds the resource template's par
     *, version: str, symbol: str, offset: str = '0', context: mcpserver.Context[ServerState]
 ) -> str:
     service = context.request_context.lifespan_context.service
-    call_stack = resolve_resource_call_stack(context)
+    call_stack = resolve.resolve_resource_call_stack(context)
     with call_stack.create_callstack():
         created = create_python_version(version)
         if isinstance(created, InvalidVersionError):
@@ -242,7 +184,7 @@ async def complete_documentation(
     argument: CompletionArgument,
     context: CompletionContext | None,
 ) -> Completion | None:
-    service = resolve_resource_service()
+    service = resolve.resolve_resource_service()
     environment = get_config_registry().provide_config().environment
     completions = DocumentationCompletions(service=service, environment=environment)
     return await completions.complete(ref, argument, context)

@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import anyio
 
 from python_docs_mcp.core.clock import get_server_clock
-from python_docs_mcp.resolve import LoaderEnvironment, compose_service
 from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.services.composition import LoaderEnvironment, compose_service
 from python_docs_mcp.stores.disk_cache import NullInventoryStore, create_inventory_store
 from python_docs_mcp.stores.repository import documentation_http_client
 
