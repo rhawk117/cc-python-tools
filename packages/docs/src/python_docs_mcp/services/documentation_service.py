@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 import anyio
 
-from python_docs_mcp.adapters.extraction import extract_markdown
-from python_docs_mcp.adapters.inventory import parse_inventory
 from python_docs_mcp.adapters.progress import SilentReporter
 from python_docs_mcp.core.exception import CallDeadlineExceededError
+from python_docs_mcp.services.extraction import extract_markdown
+from python_docs_mcp.services.inventory import parse_inventory
 from python_docs_mcp.services.matching import catalog_symbols
 from python_docs_mcp.stores.store import FillSucceeded
 

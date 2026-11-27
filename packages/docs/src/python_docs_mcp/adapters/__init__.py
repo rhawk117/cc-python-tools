@@ -1,1 +1,1 @@
-"""Adapters for inventory parsing, markdown extraction and progress reporting."""
+"""Adapters for lifecycle-managed shared state: the HTTP client and the progress board."""

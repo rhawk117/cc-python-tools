@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 from python_agent_tools_core.version import PythonVersion
-from python_docs_mcp.adapters.inventory import parse_inventory
 from python_docs_mcp.core.exception import (
     CorruptInventoryError,
     EmptyInventoryError,
@@ -16,6 +15,7 @@ from python_docs_mcp.core.exception import (
     UnsupportedInventoryError,
 )
 from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.services.inventory import parse_inventory
 
 from tests.docs.support.samples import (
     DOCS_VERSION,

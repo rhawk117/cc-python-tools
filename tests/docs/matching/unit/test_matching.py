@@ -6,9 +6,9 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from python_agent_tools_core.version import create_python_version
-from python_docs_mcp.adapters.inventory import parse_inventory
 from python_docs_mcp.schemas.domain_types import DocumentationUrl, Symbol, SymbolIndex
 from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.services.inventory import parse_inventory
 from python_docs_mcp.services.matching import (
     MatchOptions,
     MatchTier,
