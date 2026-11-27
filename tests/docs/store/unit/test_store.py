@@ -232,3 +232,4 @@ class TestFailureIdentity:
         first, second = await self.failure(cache), await self.failure(cache)
         first.add_note('first')
         assert (original.__notes__, second.__notes__) == (['original'], ['original'])
+        assert first.__notes__ == ['original', 'first']
