@@ -1,4 +1,3 @@
-import inspect
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -97,7 +96,7 @@ class TestTemplate:
     async def test_the_template_description_is_the_function_docstring(self, client: Client) -> None:
         listed = await client.list_resource_templates()
         assert [template.description for template in listed.resource_templates] == [
-            inspect.getdoc(python_docs)
+            python_docs.__doc__
         ]
 
     async def test_an_unknown_symbol_is_a_resource_error(self, client: Client) -> None:

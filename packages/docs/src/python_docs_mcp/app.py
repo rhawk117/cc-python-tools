@@ -118,7 +118,10 @@ async def read_python_docs(
 async def python_docs(  # noqa: PLR0913 - MCP builds the resource template's parameters from these keyword parameters
     *, version: str, symbol: str, offset: str = '0', context: mcpserver.Context[ServerState]
 ) -> str:
-    """One symbol's official documentation as Markdown, one page at a time."""
+    """One symbol's official documentation as Markdown, one page at a time.
+
+    The last line names the next offset or marks the end of the section.
+    """
     service = context.request_context.lifespan_context.service
     call_stack = resolve.resolve_resource_call_stack(context)
     with call_stack.create_callstack():
