@@ -1,3 +1,4 @@
+import inspect
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -13,7 +14,7 @@ from mcp.types import (
     TextResourceContents,
 )
 from python_agent_tools_core.project import PROJECT_ROOT_VARIABLE
-from python_docs_mcp.app import complete_documentation
+from python_docs_mcp.app import complete_documentation, python_docs
 from python_docs_mcp.core.exception import ServiceUnavailableError
 from python_docs_mcp.lifespan import ServiceOptions
 from python_docs_mcp.services.completions import RESOURCE_URI
@@ -92,6 +93,12 @@ class TestTemplate:
     async def test_the_template_is_listed(self, client: Client) -> None:
         listed = await client.list_resource_templates()
         assert [template.uri_template for template in listed.resource_templates] == [RESOURCE_URI]
+
+    async def test_the_template_description_is_the_function_docstring(self, client: Client) -> None:
+        listed = await client.list_resource_templates()
+        assert [template.description for template in listed.resource_templates] == [
+            inspect.getdoc(python_docs)
+        ]
 
     async def test_an_unknown_symbol_is_a_resource_error(self, client: Client) -> None:
         with pytest.raises(MCPError, match='Unknown symbol'):

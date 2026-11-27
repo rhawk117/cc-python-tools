@@ -43,6 +43,7 @@ SERVER_INSTRUCTIONS = (
     ' Find exact names with search_python_docs, then read them with read_python_docs.'
 )
 READ_ONLY_REMOTE = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)
+ALWAYS_LOAD = {'anthropic/alwaysLoad': True}
 
 
 def parse_resource_offset(text: str) -> int:
@@ -63,7 +64,7 @@ def create_server(*, settings: Settings | None = None) -> mcpserver.MCPServer[Se
 server = create_server()
 
 
-@server.tool(annotations=READ_ONLY_REMOTE)
+@server.tool(title='Search Python docs', annotations=READ_ONLY_REMOTE, meta=ALWAYS_LOAD)
 async def search_python_docs(
     *,
     model_params: arguments.SearchArguments,
@@ -84,7 +85,12 @@ async def search_python_docs(
         return await search_use_case.run(service, request)
 
 
-@server.tool(annotations=READ_ONLY_REMOTE, structured_output=False)
+@server.tool(
+    title='Read Python docs',
+    annotations=READ_ONLY_REMOTE,
+    meta=ALWAYS_LOAD,
+    structured_output=False,
+)
 async def read_python_docs(
     *,
     model_params: arguments.ReadArguments,
@@ -107,17 +113,12 @@ async def read_python_docs(
 
 
 @server.resource(
-    RESOURCE_URI,
-    title='Python standard-library documentation',
-    description=(
-        "One symbol's official documentation as Markdown, one page at a time;"
-        ' the last line names the next offset.'
-    ),
-    mime_type='text/markdown',
+    RESOURCE_URI, title='Python standard-library documentation', mime_type='text/markdown'
 )
 async def python_docs(  # noqa: PLR0913 - MCP builds the resource template's parameters from these keyword parameters
     *, version: str, symbol: str, offset: str = '0', context: mcpserver.Context[ServerState]
 ) -> str:
+    """One symbol's official documentation as Markdown, one page at a time."""
     service = context.request_context.lifespan_context.service
     call_stack = resolve.resolve_resource_call_stack(context)
     with call_stack.create_callstack():
@@ -135,6 +136,7 @@ async def python_docs(  # noqa: PLR0913 - MCP builds the resource template's par
         return await read_use_case.run(service, request, continuation)
 
 
+@server.completion()  # ty: ignore[dynamic-function-decorator-return] - the SDK's completion() has no return annotation
 async def complete_documentation(
     ref: ResourceTemplateReference | PromptReference,
     argument: CompletionArgument,
@@ -144,6 +146,3 @@ async def complete_documentation(
     environment = get_config_registry().provide_config().environment
     completions = DocumentationCompletions(service=service, environment=environment)
     return await completions.complete(ref, argument, context)
-
-
-server.completion()(complete_documentation)

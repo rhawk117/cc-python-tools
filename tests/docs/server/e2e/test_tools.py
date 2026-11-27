@@ -90,6 +90,12 @@ class TestListing:
         ]
         assert hints == [(True, True, True)] * 2
 
+    async def test_both_tools_carry_a_title_and_the_always_load_meta(self, client: Client) -> None:
+        listed = await client.list_tools()
+        titles = {tool.name: tool.title for tool in listed.tools}
+        assert titles == {SEARCH_TOOL: 'Search Python docs', READ_TOOL: 'Read Python docs'}
+        assert [tool.meta for tool in listed.tools] == [{'anthropic/alwaysLoad': True}] * 2
+
     async def test_the_search_limit_is_bounded_and_defaults_to_ten(self, client: Client) -> None:
         listed = await client.list_tools()
         search = next(tool for tool in listed.tools if tool.name == SEARCH_TOOL)
