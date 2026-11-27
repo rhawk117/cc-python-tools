@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urldefrag, urlsplit
 
-from python_agent_tools_core.version import DOCUMENTATION_HOST, VERSION_PATTERN, PythonVersion
+from python_agent_tools_core.version import VERSION_PATTERN, PythonVersion
 
 from python_docs_mcp.core.exception import (
     AmbiguousUrlError,
@@ -12,7 +12,13 @@ from python_docs_mcp.core.exception import (
     UnversionedUrlError,
 )
 
+DOCUMENTATION_HOST = 'docs.python.org'
+
 type UrlViolation = AmbiguousUrlError | ForeignUrlError | UnversionedUrlError
+
+
+def documentation_base_url(version: PythonVersion) -> str:
+    return f'https://{DOCUMENTATION_HOST}/{version.text}/'
 
 
 def has_unsafe_characters(url: str) -> bool:

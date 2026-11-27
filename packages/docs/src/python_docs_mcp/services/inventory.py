@@ -21,6 +21,7 @@ from python_docs_mcp.schemas.domain_types import (
     SymbolIndex,
     ambiguous_url_violation,
     create_documentation_url,
+    documentation_base_url,
 )
 
 if TYPE_CHECKING:
@@ -79,7 +80,7 @@ def entry_url(entry: DataObjStr, version: PythonVersion) -> DocumentationUrl | N
     if ambiguous_url_violation(uri) is not None:
         return None
 
-    url = create_documentation_url(urljoin(version.base_url, uri))
+    url = create_documentation_url(urljoin(documentation_base_url(version), uri))
     if not isinstance(url, DocumentationUrl):
         return None
 

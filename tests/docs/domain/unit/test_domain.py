@@ -6,6 +6,7 @@ from python_docs_mcp.schemas.domain_types import (
     DocumentationUrl,
     ambiguous_url_violation,
     create_documentation_url,
+    documentation_base_url,
 )
 
 
@@ -75,8 +76,8 @@ class TestPythonVersion:
         assert isinstance(result, InvalidVersionError)
         assert repr(text) in str(result)
 
-    def test_base_url_is_the_versioned_root(self) -> None:
-        assert PythonVersion(text='3.13').base_url == 'https://docs.python.org/3.13/'
+    def test_documentation_base_url_is_the_versioned_root(self) -> None:
+        assert documentation_base_url(PythonVersion(text='3.13')) == 'https://docs.python.org/3.13/'
 
     def test_minor_is_the_number_after_the_major(self) -> None:
         assert PythonVersion(text='3.13').minor == 13

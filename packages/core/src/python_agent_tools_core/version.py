@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 from python_agent_tools_core.exception import InvalidVersionError
 
-DOCUMENTATION_HOST = 'docs.python.org'
 VERSION_PATTERN = r'3\.(0|[1-9][0-9]?)'
 
 
@@ -18,10 +17,6 @@ def python_version_violation(text: str) -> InvalidVersionError | None:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class PythonVersion:
     text: str
-
-    @property
-    def base_url(self) -> str:
-        return f'https://{DOCUMENTATION_HOST}/{self.text}/'
 
     @property
     def minor(self) -> int:

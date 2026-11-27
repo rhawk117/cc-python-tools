@@ -13,7 +13,11 @@ from python_docs_mcp.core.exception import (
     UpstreamStatusError,
     VersionNotPublishedError,
 )
-from python_docs_mcp.schemas.domain_types import DocumentationUrl, create_documentation_url
+from python_docs_mcp.schemas.domain_types import (
+    DocumentationUrl,
+    create_documentation_url,
+    documentation_base_url,
+)
 
 if TYPE_CHECKING:
     import anyio
@@ -26,7 +30,7 @@ if TYPE_CHECKING:
 
 
 def inventory_url(version: PythonVersion) -> DocumentationUrl:
-    url = create_documentation_url(f'{version.base_url}objects.inv')
+    url = create_documentation_url(f'{documentation_base_url(version)}objects.inv')
     if isinstance(url, DocumentationUrl):
         return url
     raise url
