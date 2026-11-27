@@ -18,28 +18,44 @@ from python_docs_mcp.schemas.base import ArgumentRule, VersionText
 
 DEFAULT_SEARCH_LIMIT = 10
 DEFAULT_PAGE_CHARACTERS = 8_000
+MIN_TEXT_LENGTH = 1
+MAX_QUERY_LENGTH = 200
+MAX_SYMBOL_LENGTH = 300
+MIN_SEARCH_LIMIT = 1
+MAX_SEARCH_LIMIT = 30
+MIN_PAGE_CHARACTERS = 500
+MAX_PAGE_CHARACTERS = 12_000
+
+QUERY_RULE = f'must be text of {MIN_TEXT_LENGTH} to {MAX_QUERY_LENGTH} characters'
+LIMIT_RULE = f'must be a whole number from {MIN_SEARCH_LIMIT} to {MAX_SEARCH_LIMIT}'
+SYMBOL_RULE = f'must be text of {MIN_TEXT_LENGTH} to {MAX_SYMBOL_LENGTH} characters'
+PAGE_CHARACTERS_RULE = f'must be a whole number from {MIN_PAGE_CHARACTERS} to {MAX_PAGE_CHARACTERS}'
 
 SymbolQuery = Annotated[
     str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=200),
+    StringConstraints(
+        strip_whitespace=True, min_length=MIN_TEXT_LENGTH, max_length=MAX_QUERY_LENGTH
+    ),
     Field(
         description=(
             'Symbol name or dotted-name fragments, such as json.loads or ordered dict;'
             ' not a question.'
         )
     ),
-    WrapValidator(ArgumentRule(field='query', rule='must be text of 1 to 200 characters').check),
+    WrapValidator(ArgumentRule(field='query', rule=QUERY_RULE).check),
 ]
 SearchLimit = Annotated[
     PositiveInt,
-    Field(le=30, description='Maximum number of matches to return.'),
-    WrapValidator(ArgumentRule(field='limit', rule='must be a whole number from 1 to 30').check),
+    Field(le=MAX_SEARCH_LIMIT, description='Maximum number of matches to return.'),
+    WrapValidator(ArgumentRule(field='limit', rule=LIMIT_RULE).check),
 ]
 SymbolName = Annotated[
     str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=300),
+    StringConstraints(
+        strip_whitespace=True, min_length=MIN_TEXT_LENGTH, max_length=MAX_SYMBOL_LENGTH
+    ),
     Field(description='Exact symbol name from search_python_docs, such as os.path.join.'),
-    WrapValidator(ArgumentRule(field='symbol', rule='must be text of 1 to 300 characters').check),
+    WrapValidator(ArgumentRule(field='symbol', rule=SYMBOL_RULE).check),
 ]
 PageOffset = Annotated[
     NonNegativeInt,
@@ -48,10 +64,12 @@ PageOffset = Annotated[
 ]
 PageCharacters = Annotated[
     int,
-    Field(ge=500, le=12_000, description='Maximum documentation characters to return.'),
-    WrapValidator(
-        ArgumentRule(field='max_chars', rule='must be a whole number from 500 to 12000').check
+    Field(
+        ge=MIN_PAGE_CHARACTERS,
+        le=MAX_PAGE_CHARACTERS,
+        description='Maximum documentation characters to return.',
     ),
+    WrapValidator(ArgumentRule(field='max_chars', rule=PAGE_CHARACTERS_RULE).check),
 ]
 ProjectVersionText = Annotated[
     VersionText,
