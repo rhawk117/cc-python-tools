@@ -45,13 +45,10 @@ class MCPCallStack:
     deadline_seconds: float
     environment: Mapping[str, str]
 
-    def create_callstack(self, *extra_caller_handlers: AbstractContextManager[None]) -> ExitStack:
+    def create_callstack(self) -> ExitStack:
         stack = ExitStack()
         stack.enter_context(self.translator)
         stack.enter_context(call_deadline(self.deadline_seconds))
-        for handler in extra_caller_handlers:
-            stack.enter_context(handler)
-
         return stack
 
 
@@ -71,13 +68,17 @@ def resolve_tool_service(context: ServerContext) -> DocumentationService:
     return state.service.reporting_to(ContextReporter(context=context))
 
 
-def resolve_tool_call_stack(context: ServerContext) -> MCPCallStack:
+def build_call_stack(context: ServerContext, raises: type[MCPServerError]) -> MCPCallStack:
     state = context.request_context.lifespan_context
     return MCPCallStack(
-        translator=ErrorTranslator(raises=ToolError),
+        translator=ErrorTranslator(raises=raises),
         deadline_seconds=state.service.settings.call_timeout_seconds,
         environment=state.environment,
     )
+
+
+def resolve_tool_call_stack(context: ServerContext) -> MCPCallStack:
+    return build_call_stack(context, ToolError)
 
 
 def resolve_resource_state() -> ServerState:
@@ -89,12 +90,7 @@ def resolve_resource_state() -> ServerState:
 
 
 def resolve_resource_call_stack(context: ServerContext) -> MCPCallStack:
-    state = context.request_context.lifespan_context
-    return MCPCallStack(
-        translator=ErrorTranslator(raises=ResourceError),
-        deadline_seconds=state.service.settings.call_timeout_seconds,
-        environment=state.environment,
-    )
+    return build_call_stack(context, ResourceError)
 
 
 def resolve_version(environment: Mapping[str, str], version: str | None) -> str:
