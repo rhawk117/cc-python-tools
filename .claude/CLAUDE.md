@@ -29,7 +29,7 @@ Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest, mdfor
 
 ## Conventions
 
-- Commit subjects follow Conventional Commits as the history does: `type(scope): subject`, with the subject in lowercase imperative and no closing period. The types in use are feat, fix, ci, build, style and docs.
+- Commit subjects follow Conventional Commits as the history does: `type(scope): subject`, with the subject in lowercase imperative and no closing period. The types in use are feat, fix, refactor, test, ci, build, style and docs.
 - The plugin version lives in both `pyproject.toml` and `.claude-plugin/plugin.json`. `tests/plugin/test_release_metadata.py` fails when they differ, and the release workflow (`.github/workflows/cd.yml`) bumps both.
 
 ## Boundaries
