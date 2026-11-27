@@ -56,7 +56,9 @@ class ConfigRegistry(ConfigProvider, Protocol):
 
 @runtime_checkable
 class ServiceRegistry(Protocol):
-    def attach(self, service: DocumentationService) -> AbstractContextManager[None]: ...
+    def attach(self, state: ServerState) -> AbstractContextManager[None]: ...
+
+    def get_state(self) -> ServerState | None: ...
 
     def get_service(self) -> DocumentationService | None: ...
 
@@ -93,18 +95,22 @@ class ConfigHolder:
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
 class ServiceHolder:
-    services: list[DocumentationService] = field(default_factory=list)
+    states: list[ServerState] = field(default_factory=list)
+
+    def get_state(self) -> ServerState | None:
+        return next(reversed(self.states), None)
 
     def get_service(self) -> DocumentationService | None:
-        return next(reversed(self.services), None)
+        state = self.get_state()
+        return state.service if state else None
 
     @contextmanager
-    def attach(self, service: DocumentationService) -> Generator[None]:
-        self.services.append(service)
+    def attach(self, state: ServerState) -> Generator[None]:
+        self.states.append(state)
         try:
             yield
         finally:
-            self.services.remove(service)
+            self.states.remove(state)
 
 
 _config_holder = ConfigHolder()
@@ -130,8 +136,9 @@ class ServerLifespan:
         config = self.config.provide_config()
         settings = self.settings or config.settings
         async with open_documentation_service(settings, config.options) as service:
-            with self.services.attach(service):
-                yield ServerState(service=service, environment=config.environment)
+            state = ServerState(service=service, environment=config.environment)
+            with self.services.attach(state):
+                yield state
 
 
 @asynccontextmanager

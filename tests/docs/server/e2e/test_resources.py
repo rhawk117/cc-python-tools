@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from python_agent_tools_core.version import PythonVersion
+    from python_docs_mcp.lifespan import ServerConfig
 
     from tests.docs.support.server import ServerHarness
 
@@ -276,6 +277,24 @@ class TestExpiredEntryRace:
         async with harness.connect(options=options) as client:
             values = await complete(client, 'symbol', 'os', {'version': DOCS_VERSION})
         assert (values, site.requested_urls) == ([], [])
+
+
+@dataclass(frozen=True, slots=True, kw_only=True, eq=False)
+class ForbiddenConfigProvider:
+    def provide_config(self) -> ServerConfig:
+        message = 'a completion must not read the configuration again'
+        raise AssertionError(message)
+
+
+class TestCompletionFromLifespanState:
+    async def test_a_completion_reads_no_configuration_after_startup(
+        self, harness: ServerHarness, client: Client
+    ) -> None:
+        await client.read_resource(f'python-docs://{DOCS_VERSION}/os.path')
+        with harness.registry.override(ForbiddenConfigProvider()):
+            assert await complete(client, 'version', '3.1', {}) == [f'3.1{n}' for n in range(6)]
+            symbols = await complete(client, 'symbol', 'os.path.j', {'version': DOCS_VERSION})
+        assert symbols == ['os.path.join']
 
 
 class TestCompletionWithoutService:

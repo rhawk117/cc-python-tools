@@ -80,12 +80,12 @@ def resolve_tool_call_stack(context: ServerContext) -> MCPCallStack:
     )
 
 
-def resolve_resource_service() -> DocumentationService:
-    service = get_service_registry().get_service()
-    if service is None:
+def resolve_resource_state() -> ServerState:
+    state = get_service_registry().get_state()
+    if state is None:
         raise ServiceUnavailableError
 
-    return service
+    return state
 
 
 def resolve_resource_call_stack(context: ServerContext) -> MCPCallStack:

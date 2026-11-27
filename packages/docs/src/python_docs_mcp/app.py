@@ -11,11 +11,7 @@ from python_agent_tools_core.exception import InvalidVersionError
 from python_agent_tools_core.version import create_python_version
 
 from python_docs_mcp import resolve
-from python_docs_mcp.lifespan import (
-    ServerLifespan,
-    ServerState,
-    get_config_registry,
-)
+from python_docs_mcp.lifespan import ServerLifespan, ServerState
 from python_docs_mcp.schemas import arguments
 from python_docs_mcp.services import read_python_docs as read_use_case
 from python_docs_mcp.services import search_python_docs as search_use_case
@@ -145,7 +141,6 @@ async def complete_documentation(
     argument: CompletionArgument,
     context: CompletionContext | None,
 ) -> Completion | None:
-    service = resolve.resolve_resource_service()
-    environment = get_config_registry().provide_config().environment
-    completions = DocumentationCompletions(service=service, environment=environment)
+    state = resolve.resolve_resource_state()
+    completions = DocumentationCompletions(service=state.service, environment=state.environment)
     return await completions.complete(ref, argument, context)
