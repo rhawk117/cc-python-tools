@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, override
 import anyio
 import httpx2
 import pytest
-from python_docs_mcp.composition import ServiceOptions, open_documentation_service
-from python_docs_mcp.disk_cache import NullInventoryStore
-from python_docs_mcp.domain import PythonVersion, create_python_version
-from python_docs_mcp.errors import CallDeadlineExceededError, VersionNotPublishedError
-from python_docs_mcp.services import call_deadline
-from python_docs_mcp.settings import Settings
+from python_agent_tools_core.version import PythonVersion, create_python_version
+from python_docs_mcp.core.exception import CallDeadlineExceededError, VersionNotPublishedError
+from python_docs_mcp.lifespan import ServiceOptions, open_documentation_service
+from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.services.documentation_service import call_deadline
+from python_docs_mcp.stores.disk_cache import NullInventoryStore
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages
@@ -18,26 +18,20 @@ from tests.docs.support.samples import DOCS_VERSION, standard_pages
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from python_docs_mcp.services import (
+    from python_docs_mcp.services.documentation_service import (
         DocumentationService,
     )
+
+    from tests.docs.support.clock import FakeClock
 
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
 PAGE_PATH = f'/{DOCS_VERSION}/library/os.path.html'
 
 
-@dataclass(slots=True)
-class Clock:
-    now: float = 0
-
-    def read(self) -> float:
-        return self.now
-
-
 @dataclass(slots=True, kw_only=True, frozen=True)
 class ServiceHarness:
     site: DocsSite
-    clock: Clock
+    clock: FakeClock
     service: DocumentationService
 
 
@@ -61,12 +55,11 @@ class RecordingStore:
 
 @asynccontextmanager
 async def run_harness(
-    pages: dict[str, bytes], store: RecordingStore | None = None
+    pages: dict[str, bytes], clock: FakeClock, store: RecordingStore | None = None
 ) -> AsyncGenerator[ServiceHarness]:
     site = DocsSite(pages=pages)
-    clock = Clock()
     options = ServiceOptions(
-        transport=site.transport(), timer=clock.read, store=store or NullInventoryStore()
+        transport=site.transport(), clock=clock, store=store or NullInventoryStore()
     )
     async with open_documentation_service(Settings(), options) as service:
         yield ServiceHarness(site=site, clock=clock, service=service)
@@ -76,13 +69,13 @@ class TestCatalog:
     version = make_version(DOCS_VERSION)
 
     @pytest.fixture
-    async def harness(self) -> AsyncGenerator[ServiceHarness]:
-        async with run_harness(standard_pages()) as harness:
+    async def harness(self, clock: FakeClock) -> AsyncGenerator[ServiceHarness]:
+        async with run_harness(standard_pages(), clock) as harness:
             yield harness
 
     @pytest.fixture
-    async def empty_harness(self) -> AsyncGenerator[ServiceHarness]:
-        async with run_harness({}) as harness:
+    async def empty_harness(self, clock: FakeClock) -> AsyncGenerator[ServiceHarness]:
+        async with run_harness({}, clock) as harness:
             yield harness
 
     async def test_a_second_request_is_served_from_memory(self, harness: ServiceHarness) -> None:
@@ -104,7 +97,7 @@ class TestCatalog:
             with pytest.raises(VersionNotPublishedError):
                 await harness.service.catalog(self.version)
         requests_inside_window = harness.site.request_count(INVENTORY_PATH)
-        harness.clock.now = Settings().missing_version_ttl_seconds + 1
+        harness.clock.advance(Settings().missing_version_ttl_seconds + 1)
         with pytest.raises(VersionNotPublishedError):
             await harness.service.catalog(self.version)
         assert (requests_inside_window, harness.site.request_count(INVENTORY_PATH)) == (1, 2)
@@ -113,22 +106,22 @@ class TestCatalog:
 class TestCatalogLoader:
     version = make_version(DOCS_VERSION)
 
-    async def test_a_fetched_inventory_is_written_to_the_store(self) -> None:
+    async def test_a_fetched_inventory_is_written_to_the_store(self, clock: FakeClock) -> None:
         store = RecordingStore()
-        async with run_harness(standard_pages(), store) as harness:
+        async with run_harness(standard_pages(), clock, store) as harness:
             catalog = await harness.service.catalog(self.version)
         assert 'os.path.join' in catalog.index.symbols
         assert store.writes == {DOCS_VERSION: standard_pages()[INVENTORY_PATH]}
 
-    async def test_a_stored_inventory_is_parsed_without_a_request(self) -> None:
+    async def test_a_stored_inventory_is_parsed_without_a_request(self, clock: FakeClock) -> None:
         store = RecordingStore(stored=standard_pages()[INVENTORY_PATH])
-        async with run_harness({}, store) as harness:
+        async with run_harness({}, clock, store) as harness:
             catalog = await harness.service.catalog(self.version)
         assert 'os.path.join' in catalog.index.symbols
         assert (harness.site.request_count(INVENTORY_PATH), store.writes) == (0, {})
 
-    async def test_an_unpublished_version_is_named(self) -> None:
-        async with run_harness({}) as harness:
+    async def test_an_unpublished_version_is_named(self, clock: FakeClock) -> None:
+        async with run_harness({}, clock) as harness:
             with pytest.raises(VersionNotPublishedError, match=DOCS_VERSION):
                 await harness.service.catalog(self.version)
 
@@ -136,14 +129,16 @@ class TestCatalogLoader:
 class TestStoredCatalog:
     version = make_version(DOCS_VERSION)
 
-    async def test_an_empty_store_gives_nothing_and_requests_nothing(self) -> None:
-        async with run_harness(standard_pages(), RecordingStore()) as harness:
+    async def test_an_empty_store_gives_nothing_and_requests_nothing(
+        self, clock: FakeClock
+    ) -> None:
+        async with run_harness(standard_pages(), clock, RecordingStore()) as harness:
             assert await harness.service.stored_catalog(self.version) is None
         assert harness.site.request_count(INVENTORY_PATH) == 0
 
-    async def test_a_stored_inventory_is_parsed(self) -> None:
+    async def test_a_stored_inventory_is_parsed(self, clock: FakeClock) -> None:
         store = RecordingStore(stored=standard_pages()[INVENTORY_PATH])
-        async with run_harness({}, store) as harness:
+        async with run_harness({}, clock, store) as harness:
             catalog = await harness.service.stored_catalog(self.version)
         assert catalog is not None
         assert 'os.path.join' in catalog.index.symbols
@@ -152,9 +147,9 @@ class TestStoredCatalog:
 class TestStoredCatalogCaching:
     version = make_version(DOCS_VERSION)
 
-    async def test_a_second_completion_does_not_parse_again(self) -> None:
+    async def test_a_second_completion_does_not_parse_again(self, clock: FakeClock) -> None:
         store = RecordingStore(stored=standard_pages()[INVENTORY_PATH])
-        async with run_harness({}, store) as harness:
+        async with run_harness({}, clock, store) as harness:
             first = await harness.service.stored_catalog(self.version)
             store.stored = None
             second = await harness.service.stored_catalog(self.version)
@@ -171,8 +166,8 @@ class TestSection:
     version = make_version(DOCS_VERSION)
 
     @pytest.fixture
-    async def harness(self) -> AsyncGenerator[ServiceHarness]:
-        async with run_harness(standard_pages()) as harness:
+    async def harness(self, clock: FakeClock) -> AsyncGenerator[ServiceHarness]:
+        async with run_harness(standard_pages(), clock) as harness:
             yield harness
 
     async def test_a_second_read_is_served_from_memory(self, harness: ServiceHarness) -> None:

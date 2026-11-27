@@ -223,6 +223,15 @@ __marimo__/
 # Claude Code sandbox mount points
 /.bash_profile
 /.bashrc
+/.claude/agents
+/.claude/commands
+/.claude/launch.json
+/.claude/loop.md
+/.claude/output-styles
+/.claude/routines
+/.claude/scheduled_tasks.json
+/.claude/skills
+/.claude/workflows
 /.gitconfig
 /.gitmodules
 /.idea

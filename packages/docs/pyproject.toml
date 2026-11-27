@@ -14,15 +14,18 @@ dependencies = [
     "httpx2>=2.16.2",
     "markdownify>=1.2.3",
     "mcp>=2.3.0",
-    "packaging>=26.4",
+    "python-agent-tools-core",
     "pydantic>=2.14.4",
     "pydantic-settings>=2.16.3",
     "rapidfuzz>=3.14.6",
     "sphobjinv>=2.4",
 ]
 
+[tool.uv.sources]
+python-agent-tools-core = { workspace = true }
+
 [project.scripts]
-python-docs-mcp = "python_docs_mcp.main:main"
+python-docs-mcp = "python_docs_mcp.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]

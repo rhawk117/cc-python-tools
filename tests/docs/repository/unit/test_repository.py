@@ -3,26 +3,19 @@ from dataclasses import dataclass
 import anyio
 import httpx2
 import pytest
-from python_docs_mcp.domain import (
-    DocumentationUrl,
-    PythonVersion,
-    create_documentation_url,
-    create_python_version,
-)
-from python_docs_mcp.errors import (
+from python_agent_tools_core.version import PythonVersion, create_python_version
+from python_docs_mcp.adapters.http_client import documentation_http_client
+from python_docs_mcp.adapters.progress import ProgressBoard
+from python_docs_mcp.core.exception import (
     DownloadTooLargeError,
     PageNotFoundError,
     RetrievalFailedError,
     UpstreamStatusError,
     VersionNotPublishedError,
 )
-from python_docs_mcp.progress import ProgressBoard
-from python_docs_mcp.repository import (
-    DocumentationSource,
-    documentation_http_client,
-    inventory_url,
-)
-from python_docs_mcp.settings import Settings
+from python_docs_mcp.schemas.domain_types import DocumentationUrl, create_documentation_url
+from python_docs_mcp.schemas.settings import Settings
+from python_docs_mcp.stores.repository import DocumentationSource, inventory_url
 
 from tests.docs.support.docs_site import DocsSite
 from tests.docs.support.samples import DOCS_VERSION, standard_pages

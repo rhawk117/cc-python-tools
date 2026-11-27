@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
-from python_docs_mcp.errors import CapacityError
-from python_docs_mcp.settings import Settings
+from python_docs_mcp.core.exception import CapacityError
+from python_docs_mcp.schemas.settings import Settings
 
 
 def first_error(failure: pytest.ExceptionInfo[ValidationError]) -> object:

@@ -29,7 +29,8 @@ copy the shape, never the names.
 - Procedural OO: frozen public data and policy types define the domain, module-level functions move values through it, dependencies are built at the edge and injected, side effects are pushed outward.
 - Push each decision to the layer that holds the information it needs.
 - Never hand-roll what the stdlib, an installed package or the codebase's own helpers already own (pathlib, textwrap, contextlib, shutil, Pydantic or msgspec validation). Never override a default without a demonstrated issue.
-- File names carry the layer, with the same roles in every concept package: `domain.py`, `schemas.py`, `store.py` or `repository.py`, `services.py` or `use_cases.py`, `policy.py`, `errors.py`, `util.py`. Any of them may grow into a package. No Python file over 300 lines.
+- Lay a package out by layer, never as a flat pile of modules: `__main__.py`, `server.py`, `app.py`, `resolve.py`, `lifespan.py` at the top, then `core/` (`clock.py`, `exception.py`, `interfaces.py` for Protocols and base classes), `schemas/` (`base.py`, `domain_types.py`, ...), `stores/` (persistence, caches, compression), `adapters/` (lifespan-managed shared state such as `http_client.py`) and `services/` (use cases). Code reused across the workspace, such as project resolution, lives in its own workspace package. No Python file over 300 lines.
+- All date and time handling goes through one clock: a frozen `ServerClock` in `core/clock.py` behind a `ClockInterface` Protocol (`now()`, `epoch_now()`, `timestamp()`, with the zone and unit as fields), handed out by `get_server_clock()`. Consumers take `clock: ClockInterface = field(default_factory=get_server_clock)`; nothing else calls `datetime`, `time` or `monotonic` directly.
 
 ## Classes and values
 
@@ -138,7 +139,7 @@ def create_upload_service(root: Path, options: UploadOptions | None = None) -> U
 - No `__post_init__`: validation lives in a policy or a standalone helper testable in isolation. Never `object.__setattr__` on a frozen dataclass.
 - No `ClassVar` on dataclasses.
 - Inherit only from the application's exception hierarchy, `Protocol`, `StrEnum` or `IntEnum`, and `msgspec.Struct` or `BaseModel` (one project base may set shared config such as `rename='camel'`). Everything else is composition.
-- Public by default. Hide through the interface, never through underscores: when a caller could misuse an implementation, a factory hands it a Protocol, so nothing beyond the Protocol reaches the caller while the implementation stays public and testable on its own. Where no interface is needed, a frozen container plus a public function does the job. No underscore-prefixed classes; immutability over underscore-prefixed members.
+- Public by default. Hide through the interface, never through underscores: when a caller could misuse an implementation, a factory hands it a Protocol, so nothing beyond the Protocol reaches the caller while the implementation stays public and testable on its own. Where no interface is needed, a frozen container plus a public function does the job. No underscore-prefixed classes; immutability over underscore-prefixed members. One exception: a process-wide default instance may sit in an underscore-prefixed module variable when a public `get_<name>()` accessor returning its Protocol is the only way to reach it (`_server_clock` read through `get_server_clock()`).
 - Keep Protocols minimal; only resource-owning implementations are context managers. Always `@runtime_checkable`; it catches renamed or missing members at `isinstance`, not changed signatures, which ty catches at `repo: Repository = MemoryRepository()`.
 - Behavior handed to another object is a class with a verb method (`handler.handle(job)`) typed by a Protocol, never a `__call__` Protocol, a closure or a lambda. When an API itself takes a callable, pass a bound verb method or a factory function (`map(router.dispatch, names)`, `field(default_factory=create_storage)`).
 - Values with different lifetimes live in different objects (per-line state apart from per-document state). Group state by concern, never one god object.
@@ -185,7 +186,7 @@ def create_command_router(room: Room) -> CommandRouter:
     })
 ```
 
-- No module-level mutable reference types, import-time I/O, constructors doing real work, generic setters, or `del` (use `dict.pop`).
+- No module-level mutable reference types, import-time I/O, constructors doing real work, generic setters, or `del` (use `dict.pop`). Exceptions: the application object built by its factory in `app.py` (`server = create_server()`), and a default instance behind a `get_<name>()` accessor (see the clock rule).
 - A frozen class may own a mutable container as long as only its own intent methods change it (`mount()` above). Design those methods around the use case so a caller never has a reason to reach for the attribute.
 - Operators in runtime code, defined or consumed, must be guessable by a reader who does not know the operand types. `path /= other` makes no sense, so use `Path.joinpath()` instead of `/`. Type expressions such as `X | None` are exempt.
 
@@ -197,7 +198,8 @@ def create_command_router(room: Room) -> CommandRouter:
 
 ## Typing
 
-- Declare long, repeated or constrained types once as PEP 695 `type` aliases, `Annotated[...]` included (`type Port = Annotated[int, Field(gt=0)]`, `type Pair[T] = tuple[T, T]`). Never write `Annotated[...]` inline in a field or parameter.
+- Declare long, repeated or constrained types once as aliases. Plain types use PEP 695 `type` (`type Pair[T] = tuple[T, T]`). An `Annotated[...]` alias is a plain assignment, never a `type` statement, because metadata-reading libraries such as Pydantic and the MCP SDK can miss metadata behind a `TypeAliasType` (`Port = Annotated[int, Field(gt=0)]`). Never write `Annotated[...]` inline in a field or parameter.
+- Never put `None` inside `Annotated`: no `Annotated[X | None, ...]` and no `Annotated[Optional[X], ...]`. Annotate the non-optional type and union at the use site: `port: Port | None = None`. Type checkers mis-handle the optional inside the metadata wrapper.
 - Annotate contextmanager functions as `Generator[...]`.
 - Project-local msgspec or Pydantic base classes go in ruff's `runtime-evaluated-base-classes`.
 
@@ -269,6 +271,12 @@ def add_entry(path: Path, spec: DatabaseSpec, entry: NewEntry) -> None:
 ```
 
 - `main()` returns an exit code; the module guard does `raise SystemExit(main())`.
+
+## MCP servers
+
+- `app.py` holds `create_server(*, settings: Settings | None = None) -> MCPServer` and the module-level `server = create_server()`. Tools and resources are declared inline under it with `@server.tool(title=..., annotations=..., structured_output=...)` and `@server.resource(...)`; the function docstring is the tool description.
+- Tool and resource dependencies are injected with `Annotated[T, Resolve(...)]` aliases (`ToolServiceDep`), never built inside the handler. Per-call error translation and deadlines compose in one `ExitStack` built from the call's handlers, not a stack of `with` statements repeated in every tool.
+- Raw Pydantic `ValidationError` text never reaches the model: shape validation failures into the server's own error messages.
 
 ## Comments and docstrings
 

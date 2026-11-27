@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 
 import anyio
 import pytest
-from python_docs_mcp import progress
-from python_docs_mcp.domain import PythonVersion
-from python_docs_mcp.progress import ProgressBoard
+from python_agent_tools_core.version import PythonVersion
+from python_docs_mcp.adapters import progress
+from python_docs_mcp.adapters.progress import ProgressBoard
 
 
 @dataclass(slots=True, kw_only=True)

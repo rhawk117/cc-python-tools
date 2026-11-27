@@ -22,14 +22,14 @@ Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest, mdfor
 ## Layout
 
 - The plugin sits at the repository root, and `.claude-plugin/plugin.json` contains its manifest. The root `pyproject.toml` is both the plugin project and the uv workspace root, with members under `packages/`.
-- `packages/core` (`python_agent_tools_core`) is the shared package meant to hold the code that resolves uv and a project's `pyproject.toml`, for reuse across the workspace's tools. It holds no code yet, and nothing depends on it yet.
+- `packages/core` (`python_agent_tools_core`) is the shared package for the workspace's tools. It holds the shared Python version types (`version.py`), the workspace error root and version errors (`exception.py`), and project `requires-python` resolution (`project.py`). `python-docs-mcp` depends on it as a workspace member.
 - The plugin registers no hooks. `.claude/hooks/pyhooks.py` is the project's own hook script, a PEP 723 script that `.claude/settings.json` wires to Write, Edit and Read. ty does not check it, because `ty.toml` includes only `packages` and `tests`.
 - `packages/docs` holds the `python-docs-mcp` server (`python_docs_mcp`), which `mcp-servers/python-docs-mcp.json` launches with uv. It serves Python documentation search and reading tools.
 - Read `.claude/rules/python.md` before writing Python and `.claude/rules/testing.md` before writing tests. Both load on their own when you touch a matching file.
 
 ## Conventions
 
-- Commit subjects follow Conventional Commits as the history does: `type(scope): subject`, with the subject in lowercase imperative and no closing period. The types in use are feat, fix, ci, build, style and docs.
+- Commit subjects follow Conventional Commits as the history does: `type(scope): subject`, with the subject in lowercase imperative and no closing period. The types in use are feat, fix, refactor, test, ci, build, style and docs.
 - The plugin version lives in both `pyproject.toml` and `.claude-plugin/plugin.json`. `tests/plugin/test_release_metadata.py` fails when they differ, and the release workflow (`.github/workflows/cd.yml`) bumps both.
 
 ## Boundaries

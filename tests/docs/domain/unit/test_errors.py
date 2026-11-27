@@ -3,8 +3,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from python_docs_mcp import errors
-from python_docs_mcp.errors import (
+from python_agent_tools_core.exception import (
+    InvalidVersionError,
+    VersionRequiredError,
+)
+from python_docs_mcp.core import exception as errors
+from python_docs_mcp.core.exception import (
     AmbiguousUrlError,
     CallDeadlineExceededError,
     CapacityError,
@@ -17,7 +21,6 @@ from python_docs_mcp.errors import (
     FillInterruptedError,
     FillTimeoutError,
     ForeignUrlError,
-    InvalidVersionError,
     InventoryEntryLimitError,
     InventoryTooLargeError,
     MalformedInventoryError,
@@ -34,17 +37,17 @@ from python_docs_mcp.errors import (
     UnversionedUrlError,
     UpstreamStatusError,
     VersionNotPublishedError,
-    VersionRequiredError,
 )
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
+    from python_agent_tools_core.exception import PythonAgentToolsError
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class MessageScenario:
     name: str
-    error: DocumentationToolsError
+    error: PythonAgentToolsError
     message: str
 
     @property
@@ -187,7 +190,7 @@ def message_cases() -> pytest.MarkDecorator:
         MessageScenario(
             name='OffsetOutOfRangeError',
             error=OffsetOutOfRangeError(50, 10),
-            message='Offset 50 exceeds the section length (10).',
+            message='Offset 50 is at or past the end of the section (10 characters).',
         ),
         MessageScenario(
             name='CapacityError',
@@ -230,7 +233,7 @@ class TestErrors:
         assert issubclass(error_class, DocumentationToolsError)
 
     def test_every_source_error_class_exists(self) -> None:
-        assert len(error_classes()) == 29
+        assert len(error_classes()) == 28
 
     def test_permanent_miss_is_a_documentation_error(self) -> None:
         assert issubclass(VersionNotPublishedError, PermanentMissError)
