@@ -10,8 +10,8 @@ from python_docs_mcp.schemas import base as schemas
 from python_docs_mcp.services import matching
 
 if TYPE_CHECKING:
+    from python_docs_mcp.services.catalogs import DocumentationCatalogs
     from python_docs_mcp.services.matching import SymbolMatch
-    from python_docs_mcp.stores.catalogs import DocumentationCatalogs
 
 TotalMatches = Annotated[
     NonNegativeInt, Field(description='Number of matches before the limit applies.')

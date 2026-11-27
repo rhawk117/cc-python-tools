@@ -20,9 +20,8 @@ if TYPE_CHECKING:
     import httpx2
     from mcp.server.mcpserver import MCPServer
 
-    from python_docs_mcp.core.interfaces import ClockInterface
+    from python_docs_mcp.core.interfaces import ClockInterface, InventoryStore
     from python_docs_mcp.services.documentation_service import DocumentationService
-    from python_docs_mcp.stores.disk_cache import InventoryStore
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)

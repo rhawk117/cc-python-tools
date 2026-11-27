@@ -3,19 +3,16 @@
 import logging
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     from python_agent_tools_core.version import PythonVersion
 
+    from python_docs_mcp.core.interfaces import ProgressReporter
+
 logger = logging.getLogger(__name__)
-
-
-@runtime_checkable
-class ProgressReporter(Protocol):
-    async def report(self, read: int, total: int | None) -> None: ...
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

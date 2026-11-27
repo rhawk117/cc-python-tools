@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from python_docs_mcp.stores.disk_cache import InventoryStore
+    from python_docs_mcp.core.interfaces import InventoryStore
 
     from tests.docs.support.server import ServerHarness
 

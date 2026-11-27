@@ -14,8 +14,8 @@ from python_docs_mcp.services.matching import create_match_options, match_symbol
 if TYPE_CHECKING:
     from python_docs_mcp.schemas.domain_types import Symbol
     from python_docs_mcp.schemas.settings import Settings
+    from python_docs_mcp.services.catalogs import DocumentationCatalogs
     from python_docs_mcp.services.matching import SymbolCatalog
-    from python_docs_mcp.stores.catalogs import DocumentationCatalogs
 
 TOOL_CONTINUATION = 'call read_python_docs again with offset='
 

@@ -22,11 +22,10 @@ if TYPE_CHECKING:
     from anyio.abc import TaskGroup
     from python_agent_tools_core.version import PythonVersion
 
-    from python_docs_mcp.core.interfaces import ClockInterface, Loader
+    from python_docs_mcp.core.interfaces import ClockInterface, InventoryStore, Loader
     from python_docs_mcp.schemas.domain_types import DocumentationUrl
     from python_docs_mcp.schemas.settings import Settings
     from python_docs_mcp.services.matching import SymbolCatalog
-    from python_docs_mcp.stores.disk_cache import InventoryStore
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)

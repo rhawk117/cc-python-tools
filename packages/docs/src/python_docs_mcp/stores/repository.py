@@ -19,8 +19,9 @@ if TYPE_CHECKING:
     import anyio
     from python_agent_tools_core.version import PythonVersion
 
-    from python_docs_mcp.adapters.progress import ProgressBoard, ProgressReporter
+    from python_docs_mcp.adapters.progress import ProgressBoard
     from python_docs_mcp.core.exception import DocumentationError
+    from python_docs_mcp.core.interfaces import ProgressReporter
     from python_docs_mcp.schemas.settings import Settings
 
 

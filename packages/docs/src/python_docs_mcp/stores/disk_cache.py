@@ -6,7 +6,7 @@ import tempfile
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, BinaryIO, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, BinaryIO
 
 from python_docs_mcp.core.clock import get_server_clock
 
@@ -15,17 +15,10 @@ if TYPE_CHECKING:
 
     from python_agent_tools_core.version import PythonVersion
 
-    from python_docs_mcp.core.interfaces import ClockInterface
+    from python_docs_mcp.core.interfaces import ClockInterface, InventoryStore
 
 DATA_DIRECTORY_VARIABLE = 'CLAUDE_PLUGIN_DATA'
 CACHE_DIRECTORY = 'python-docs-inventories'
-
-
-@runtime_checkable
-class InventoryStore(Protocol):
-    def read(self, version: PythonVersion) -> bytes | None: ...
-
-    def write(self, version: PythonVersion, content: bytes) -> None: ...
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
