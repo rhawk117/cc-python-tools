@@ -6,8 +6,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    NonNegativeInt,
-    PositiveInt,
     StringConstraints,
     WrapValidator,
     model_validator,
@@ -21,14 +19,17 @@ DEFAULT_PAGE_CHARACTERS = 8_000
 MIN_TEXT_LENGTH = 1
 MAX_QUERY_LENGTH = 200
 MAX_SYMBOL_LENGTH = 300
-MIN_SEARCH_LIMIT = 1
+SEARCH_LIMIT_FLOOR = 0
+MIN_SEARCH_LIMIT = SEARCH_LIMIT_FLOOR + 1
 MAX_SEARCH_LIMIT = 30
+MIN_OFFSET = 0
 MIN_PAGE_CHARACTERS = 500
 MAX_PAGE_CHARACTERS = 12_000
 
 QUERY_RULE = f'must be text of {MIN_TEXT_LENGTH} to {MAX_QUERY_LENGTH} characters'
 LIMIT_RULE = f'must be a whole number from {MIN_SEARCH_LIMIT} to {MAX_SEARCH_LIMIT}'
 SYMBOL_RULE = f'must be text of {MIN_TEXT_LENGTH} to {MAX_SYMBOL_LENGTH} characters'
+OFFSET_RULE = f'must be a whole number of {MIN_OFFSET} or more'
 PAGE_CHARACTERS_RULE = f'must be a whole number from {MIN_PAGE_CHARACTERS} to {MAX_PAGE_CHARACTERS}'
 
 SymbolQuery = Annotated[
@@ -45,8 +46,12 @@ SymbolQuery = Annotated[
     WrapValidator(ArgumentRule(field='query', rule=QUERY_RULE).check),
 ]
 SearchLimit = Annotated[
-    PositiveInt,
-    Field(le=MAX_SEARCH_LIMIT, description='Maximum number of matches to return.'),
+    int,
+    Field(
+        gt=SEARCH_LIMIT_FLOOR,
+        le=MAX_SEARCH_LIMIT,
+        description='Maximum number of matches to return.',
+    ),
     WrapValidator(ArgumentRule(field='limit', rule=LIMIT_RULE).check),
 ]
 SymbolName = Annotated[
@@ -58,9 +63,12 @@ SymbolName = Annotated[
     WrapValidator(ArgumentRule(field='symbol', rule=SYMBOL_RULE).check),
 ]
 PageOffset = Annotated[
-    NonNegativeInt,
-    Field(description='Character offset to continue from, as given by a page footer.'),
-    WrapValidator(ArgumentRule(field='offset', rule='must be a whole number of 0 or more').check),
+    int,
+    Field(
+        ge=MIN_OFFSET,
+        description='Character offset to continue from, as given by a page footer.',
+    ),
+    WrapValidator(ArgumentRule(field='offset', rule=OFFSET_RULE).check),
 ]
 PageCharacters = Annotated[
     int,
