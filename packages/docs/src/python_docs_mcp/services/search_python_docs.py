@@ -24,7 +24,7 @@ MatchesTruncated = Annotated[
 class SearchRequest(schemas.Model):
     version: schemas.VersionText
     query: arguments.SymbolQuery
-    limit: arguments.SearchLimit = arguments.DEFAULT_SEARCH_LIMIT
+    limit: arguments.SearchLimit
 
 
 class SearchMatch(schemas.Model):

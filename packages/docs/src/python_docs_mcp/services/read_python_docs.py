@@ -24,7 +24,7 @@ class ReadRequest(schemas.Model):
     version: schemas.VersionText
     symbol: arguments.SymbolName
     offset: arguments.PageOffset
-    max_chars: arguments.PageCharacters = arguments.DEFAULT_PAGE_CHARACTERS
+    max_chars: arguments.PageCharacters
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
