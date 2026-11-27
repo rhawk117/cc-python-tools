@@ -16,18 +16,14 @@ from python_docs_mcp.lifespan import (
     ServerState,
     get_config_registry,
 )
-from python_docs_mcp.schemas.arguments import (
-    ReadArguments,
-    ResourceOffsetArguments,
-    SearchArguments,
-)
+from python_docs_mcp.schemas import arguments
 from python_docs_mcp.services import read_python_docs as read_use_case
 from python_docs_mcp.services import search_python_docs as search_use_case
 from python_docs_mcp.services.completions import (
     RESOURCE_URI,
     DocumentationCompletions,
 )
-from python_docs_mcp.services.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
+from python_docs_mcp.services.read_python_docs import ReadRequest
 from python_docs_mcp.services.search_python_docs import SearchRequest
 
 if TYPE_CHECKING:
@@ -48,13 +44,10 @@ SERVER_INSTRUCTIONS = (
 )
 READ_ONLY_REMOTE = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)
 
-SearchModelParams = SearchArguments
-ReadModelParams = ReadArguments
-
 
 def parse_resource_offset(text: str) -> int:
     try:
-        return ResourceOffsetArguments.model_validate({'offset': text}).offset
+        return arguments.ResourceOffsetArguments.model_validate({'offset': text}).offset
     except ValidationError as problems:
         raise ResourceError(problems.errors(include_url=False)[0]['msg']) from problems
 
@@ -73,7 +66,7 @@ server = create_server()
 @server.tool(annotations=READ_ONLY_REMOTE)
 async def search_python_docs(
     *,
-    model_params: SearchModelParams,
+    model_params: arguments.SearchArguments,
     service: resolve.ToolServiceDep,
     call_stack: resolve.ToolCallStackDep,
 ) -> search_use_case.SearchResult:
@@ -94,7 +87,7 @@ async def search_python_docs(
 @server.tool(annotations=READ_ONLY_REMOTE, structured_output=False)
 async def read_python_docs(
     *,
-    model_params: ReadModelParams,
+    model_params: arguments.ReadArguments,
     service: resolve.ToolServiceDep,
     call_stack: resolve.ToolCallStackDep,
 ) -> str:
@@ -136,7 +129,7 @@ async def python_docs(  # noqa: PLR0913 - MCP builds the resource template's par
             version=created.text,
             symbol=symbol,
             offset=parse_resource_offset(offset),
-            max_chars=DEFAULT_PAGE_CHARACTERS,
+            max_chars=arguments.DEFAULT_PAGE_CHARACTERS,
         )
         continuation = f'read python-docs://{created.text}/{quote(symbol, safe="")}?offset='
         return await read_use_case.run(service, request, continuation)

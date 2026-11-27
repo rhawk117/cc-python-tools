@@ -2,9 +2,10 @@
 
 from typing import TYPE_CHECKING, Annotated
 
-from pydantic import Field, NonNegativeInt, PositiveInt, StringConstraints, WrapValidator
+from pydantic import Field, NonNegativeInt
 from python_agent_tools_core.version import PythonVersion
 
+from python_docs_mcp.schemas import arguments
 from python_docs_mcp.schemas import base as schemas
 from python_docs_mcp.services import matching
 
@@ -12,40 +13,18 @@ if TYPE_CHECKING:
     from python_docs_mcp.services.matching import SymbolMatch
     from python_docs_mcp.stores.catalogs import DocumentationCatalogs
 
-DEFAULT_SEARCH_LIMIT = 10
-
-SymbolQuery = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=200),
-    Field(
-        description=(
-            'Symbol name or dotted-name fragments, such as json.loads or ordered dict;'
-            ' not a question.'
-        )
-    ),
-    WrapValidator(
-        schemas.ArgumentRule(field='query', rule='must be text of 1 to 200 characters').check
-    ),
-]
 TotalMatches = Annotated[
     NonNegativeInt, Field(description='Number of matches before the limit applies.')
 ]
 MatchesTruncated = Annotated[
     bool, Field(description='True when the fuzzy match cap cut the matches short.')
 ]
-SearchLimit = Annotated[
-    PositiveInt,
-    Field(le=30, description='Maximum number of matches to return.'),
-    WrapValidator(
-        schemas.ArgumentRule(field='limit', rule='must be a whole number from 1 to 30').check
-    ),
-]
 
 
 class SearchRequest(schemas.Model):
     version: schemas.VersionText
-    query: SymbolQuery
-    limit: SearchLimit
+    query: arguments.SymbolQuery
+    limit: arguments.SearchLimit = arguments.DEFAULT_SEARCH_LIMIT
 
 
 class SearchMatch(schemas.Model):

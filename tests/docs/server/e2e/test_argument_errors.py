@@ -134,7 +134,10 @@ class TestValidArguments:
 
     async def test_a_missing_required_argument_is_named(self, client: Client) -> None:
         result = await client.call_tool(SEARCH_TOOL, {'model_params': {'version': DOCS_VERSION}})
-        assert (result.is_error, 'model_params.query' in first_text(result)) == (True, True)
+        text = first_text(result)
+        assert result.is_error
+        assert 'required fields missing: query' in text
+        assert not any(marker in text for marker in PYDANTIC_MARKERS)
 
 
 class TestAdvertisedSchema:

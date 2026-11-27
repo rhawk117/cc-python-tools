@@ -1,12 +1,12 @@
 """Request schema, rendered page and use case for read_python_docs."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
-from pydantic import Field, NonNegativeInt, StringConstraints, WrapValidator
 from python_agent_tools_core.version import PythonVersion
 
 from python_docs_mcp.core.exception import OffsetOutOfRangeError, UnknownSymbolError
+from python_docs_mcp.schemas import arguments
 from python_docs_mcp.schemas import base as schemas
 from python_docs_mcp.services.fences import fence_before, scan_fence
 from python_docs_mcp.services.matching import create_match_options, match_symbols
@@ -17,40 +17,14 @@ if TYPE_CHECKING:
     from python_docs_mcp.services.matching import SymbolCatalog
     from python_docs_mcp.stores.catalogs import DocumentationCatalogs
 
-DEFAULT_PAGE_CHARACTERS = 8_000
 TOOL_CONTINUATION = 'call read_python_docs again with offset='
-
-SymbolName = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=300),
-    Field(description='Exact symbol name from search_python_docs, such as os.path.join.'),
-    WrapValidator(
-        schemas.ArgumentRule(field='symbol', rule='must be text of 1 to 300 characters').check
-    ),
-]
-PageOffset = Annotated[
-    NonNegativeInt,
-    Field(description='Character offset to continue from, as given by a page footer.'),
-    WrapValidator(
-        schemas.ArgumentRule(field='offset', rule='must be a whole number of 0 or more').check
-    ),
-]
-PageCharacters = Annotated[
-    int,
-    Field(ge=500, le=12_000, description='Maximum documentation characters to return.'),
-    WrapValidator(
-        schemas.ArgumentRule(
-            field='max_chars', rule='must be a whole number from 500 to 12000'
-        ).check
-    ),
-]
 
 
 class ReadRequest(schemas.Model):
     version: schemas.VersionText
-    symbol: SymbolName
-    offset: PageOffset
-    max_chars: PageCharacters
+    symbol: arguments.SymbolName
+    offset: arguments.PageOffset
+    max_chars: arguments.PageCharacters = arguments.DEFAULT_PAGE_CHARACTERS
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
