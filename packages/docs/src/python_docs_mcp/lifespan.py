@@ -3,7 +3,7 @@
 import os
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import anyio
 
@@ -15,16 +15,12 @@ from python_docs_mcp.stores.disk_cache import NullInventoryStore, create_invento
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator, Mapping
+    from contextlib import AbstractContextManager
 
     import httpx2
     from mcp.server.mcpserver import MCPServer
 
-    from python_docs_mcp.core.interfaces import (
-        ClockInterface,
-        ConfigProvider,
-        ConfigRegistry,
-        ServiceRegistry,
-    )
+    from python_docs_mcp.core.interfaces import ClockInterface
     from python_docs_mcp.services.documentation_service import DocumentationService
     from python_docs_mcp.stores.disk_cache import InventoryStore
 
@@ -47,6 +43,23 @@ class ServerConfig:
 class ServerState:
     service: DocumentationService
     environment: Mapping[str, str]
+
+
+@runtime_checkable
+class ConfigProvider(Protocol):
+    def provide_config(self) -> ServerConfig: ...
+
+
+@runtime_checkable
+class ConfigRegistry(ConfigProvider, Protocol):
+    def override(self, provider: ConfigProvider) -> AbstractContextManager[None]: ...
+
+
+@runtime_checkable
+class ServiceRegistry(Protocol):
+    def attach(self, service: DocumentationService) -> AbstractContextManager[None]: ...
+
+    def get_service(self) -> DocumentationService | None: ...
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)

@@ -10,7 +10,7 @@ from python_docs_mcp.schemas.settings import Settings
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Mapping
 
-    from python_docs_mcp.core.interfaces import ConfigRegistry
+    from python_docs_mcp.lifespan import ConfigRegistry
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, eq=False)
