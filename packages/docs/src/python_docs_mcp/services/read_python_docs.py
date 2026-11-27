@@ -99,11 +99,6 @@ def find_catalog_symbol(catalog: SymbolCatalog, name: str, settings: Settings) -
     return symbol
 
 
-async def find_symbol(service: DocumentationCatalogs, version: PythonVersion, name: str) -> Symbol:
-    catalog = await service.catalog(version)
-    return find_catalog_symbol(catalog, name, service.settings)
-
-
 def get_offset_problem(offset: int, text: str) -> OffsetOutOfRangeError | None:
     if offset and offset >= len(text):
         return OffsetOutOfRangeError(offset, len(text))
