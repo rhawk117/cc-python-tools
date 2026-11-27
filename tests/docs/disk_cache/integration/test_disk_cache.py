@@ -246,7 +246,8 @@ class TestUnusableDataDirectory:
         options = ServiceOptions(transport=site.transport(), store=store)
         async with harness.connect(options=options) as client:
             result = await client.call_tool(
-                'search_python_docs', {'version': DOCS_VERSION, 'query': 'os.path.join'}
+                'search_python_docs',
+                {'model_params': {'version': DOCS_VERSION, 'query': 'os.path.join'}},
             )
         assert not result.is_error
         assert site.request_count(INVENTORY_PATH) == 1

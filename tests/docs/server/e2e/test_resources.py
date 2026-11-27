@@ -108,7 +108,9 @@ class TestPaging:
         return content.text
 
     async def read_tool_text(self, client: Client, offset: int) -> str:
-        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path', 'offset': offset}
+        arguments = {
+            'model_params': {'version': DOCS_VERSION, 'symbol': 'os.path', 'offset': offset}
+        }
         tool = await client.call_tool(READ_TOOL, arguments)
         page = tool.content[0]
         assert isinstance(page, TextContent)
@@ -148,14 +150,14 @@ class TestPaging:
     async def test_a_malformed_offset_is_a_resource_error_without_raw_validation_text(
         self, client: Client
     ) -> None:
-        with pytest.raises(MCPError, match='offset: ') as raised:
+        with pytest.raises(MCPError, match='offset must be ') as raised:
             await client.read_resource(f'{self.uri}?offset=-1')
         assert 'pydantic' not in raised.value.error.message
 
     async def test_a_non_numeric_offset_is_a_resource_error_without_raw_validation_text(
         self, client: Client
     ) -> None:
-        with pytest.raises(MCPError, match='offset: ') as raised:
+        with pytest.raises(MCPError, match='offset must be ') as raised:
             await client.read_resource(f'{self.uri}?offset=abc')
         assert 'pydantic' not in raised.value.error.message
 

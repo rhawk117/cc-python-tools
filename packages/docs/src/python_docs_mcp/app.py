@@ -1,13 +1,12 @@
 """The python-docs-mcp server: the tools, the resource and the completions declared in one place."""
 
-from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from mcp.server import mcpserver
 from mcp.server.mcpserver.exceptions import ResourceError
 from mcp.types import ToolAnnotations
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 from python_agent_tools_core.exception import InvalidVersionError
 from python_agent_tools_core.version import create_python_version
 
@@ -17,8 +16,11 @@ from python_docs_mcp.lifespan import (
     ServerState,
     get_config_registry,
 )
-from python_docs_mcp.schemas.base import VersionText
-from python_docs_mcp.server import ArgumentErrorExtension, ArgumentErrorFormatter
+from python_docs_mcp.schemas.arguments import (
+    ReadArguments,
+    ResourceOffsetArguments,
+    SearchArguments,
+)
 from python_docs_mcp.services import read_python_docs as read_use_case
 from python_docs_mcp.services import search_python_docs as search_use_case
 from python_docs_mcp.services.completions import (
@@ -26,11 +28,9 @@ from python_docs_mcp.services.completions import (
     DocumentationCompletions,
 )
 from python_docs_mcp.services.read_python_docs import DEFAULT_PAGE_CHARACTERS, ReadRequest
-from python_docs_mcp.services.search_python_docs import DEFAULT_SEARCH_LIMIT, SearchRequest
+from python_docs_mcp.services.search_python_docs import SearchRequest
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from mcp.types import (
         Completion,
         CompletionArgument,
@@ -48,46 +48,15 @@ SERVER_INSTRUCTIONS = (
 )
 READ_ONLY_REMOTE = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)
 
-ProjectVersionText = Annotated[
-    VersionText,
-    Field(
-        description=(
-            'Python minor version such as 3.13.\n\n'
-            'Read requires-python in pyproject.toml or .python-version first; do not guess.'
-            " Defaults to the lower bound of the project's requires-python."
-        )
-    ),
-]
-
-
-class SearchArguments(BaseModel):
-    version: ProjectVersionText | None = None
-    query: search_use_case.SymbolQuery
-    limit: search_use_case.SearchLimit = DEFAULT_SEARCH_LIMIT
-
-
-class ReadArguments(BaseModel):
-    version: ProjectVersionText | None = None
-    symbol: read_use_case.SymbolName
-    offset: read_use_case.PageOffset = 0
-    max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS
-
-
-class ResourceOffsetArguments(BaseModel):
-    offset: read_use_case.PageOffset
+SearchModelParams = SearchArguments
+ReadModelParams = ReadArguments
 
 
 def parse_resource_offset(text: str) -> int:
     try:
         return ResourceOffsetArguments.model_validate({'offset': text}).offset
     except ValidationError as problems:
-        raise ResourceError(ArgumentErrorFormatter().describe(problems)) from problems
-
-
-TOOL_ARGUMENT_MODELS: Mapping[str, type[BaseModel]] = MappingProxyType({
-    'search_python_docs': SearchArguments,
-    'read_python_docs': ReadArguments,
-})
+        raise ResourceError(problems.errors(include_url=False)[0]['msg']) from problems
 
 
 def create_server(*, settings: Settings | None = None) -> mcpserver.MCPServer[ServerState]:
@@ -95,7 +64,6 @@ def create_server(*, settings: Settings | None = None) -> mcpserver.MCPServer[Se
         SERVER_NAME,
         instructions=SERVER_INSTRUCTIONS,
         lifespan=ServerLifespan(settings=settings).open,
-        extensions=[ArgumentErrorExtension(models=TOOL_ARGUMENT_MODELS)],
     )
 
 
@@ -103,11 +71,9 @@ server = create_server()
 
 
 @server.tool(annotations=READ_ONLY_REMOTE)
-async def search_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schema from these keyword parameters
+async def search_python_docs(
     *,
-    version: ProjectVersionText | None = None,
-    query: search_use_case.SymbolQuery,
-    limit: search_use_case.SearchLimit = DEFAULT_SEARCH_LIMIT,
+    model_params: SearchModelParams,
     service: resolve.ToolServiceDep,
     call_stack: resolve.ToolCallStackDep,
 ) -> search_use_case.SearchResult:
@@ -118,20 +84,17 @@ async def search_python_docs(  # noqa: PLR0913 - MCP builds the tool's input sch
     """
     with call_stack.create_callstack():
         request = SearchRequest(
-            version=resolve.resolve_version(call_stack.environment, version),
-            query=query,
-            limit=limit,
+            version=resolve.resolve_version(call_stack.environment, model_params.version),
+            query=model_params.query,
+            limit=model_params.limit,
         )
         return await search_use_case.run(service, request)
 
 
 @server.tool(annotations=READ_ONLY_REMOTE, structured_output=False)
-async def read_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schema from these keyword parameters
+async def read_python_docs(
     *,
-    version: ProjectVersionText | None = None,
-    symbol: read_use_case.SymbolName,
-    offset: read_use_case.PageOffset = 0,
-    max_chars: read_use_case.PageCharacters = DEFAULT_PAGE_CHARACTERS,
+    model_params: ReadModelParams,
     service: resolve.ToolServiceDep,
     call_stack: resolve.ToolCallStackDep,
 ) -> str:
@@ -142,10 +105,10 @@ async def read_python_docs(  # noqa: PLR0913 - MCP builds the tool's input schem
     """
     with call_stack.create_callstack():
         request = ReadRequest(
-            version=resolve.resolve_version(call_stack.environment, version),
-            symbol=symbol,
-            offset=offset,
-            max_chars=max_chars,
+            version=resolve.resolve_version(call_stack.environment, model_params.version),
+            symbol=model_params.symbol,
+            offset=model_params.offset,
+            max_chars=model_params.max_chars,
         )
         return await read_use_case.run(service, request)
 

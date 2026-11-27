@@ -1,5 +1,5 @@
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import httpx2
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
     from pathlib import Path
 
-    from mcp.types import CallToolResult
+    from mcp.types import CallToolResult, Tool
 
     from tests.docs.support.server import ServerHarness
 
@@ -34,6 +34,12 @@ def first_text(result: CallToolResult) -> str:
     block = result.content[0]
     assert isinstance(block, TextContent)
     return block.text
+
+
+def argument_fields(tool: Tool) -> dict[str, Any]:
+    reference = tool.input_schema['properties']['model_params']['$ref']
+    definition = tool.input_schema['$defs'][reference.rsplit('/', 1)[-1]]
+    return definition['properties']
 
 
 @pytest.fixture
@@ -87,13 +93,13 @@ class TestListing:
     async def test_the_search_limit_is_bounded_and_defaults_to_ten(self, client: Client) -> None:
         listed = await client.list_tools()
         search = next(tool for tool in listed.tools if tool.name == SEARCH_TOOL)
-        schema = search.input_schema
-        bound = schema['properties']['limit']['maximum']
-        default = schema['properties']['limit']['default']
+        limit = argument_fields(search)['limit']
+        bound = limit['maximum']
+        default = limit['default']
         assert (bound, default) == (30, 10)
 
     async def test_a_search_limit_above_thirty_is_rejected(self, client: Client) -> None:
-        arguments = {'version': DOCS_VERSION, 'query': 'os.path', 'limit': 31}
+        arguments = {'model_params': {'version': DOCS_VERSION, 'query': 'os.path', 'limit': 31}}
         result = await client.call_tool(SEARCH_TOOL, arguments)
         assert result.is_error
 
@@ -102,20 +108,26 @@ class TestCalls:
     async def test_search_returns_structured_content_and_the_same_json_text(
         self, client: Client
     ) -> None:
-        result = await client.call_tool(SEARCH_TOOL, {'version': DOCS_VERSION, 'query': 'os.path'})
+        result = await client.call_tool(
+            SEARCH_TOOL, {'model_params': {'version': DOCS_VERSION, 'query': 'os.path'}}
+        )
         structured = result.structured_content
         assert structured is not None
         assert (result.is_error, structured['query']) == (False, 'os.path')
         assert structured == json.loads(first_text(result))
 
     async def test_search_without_a_limit_returns_at_most_ten_matches(self, client: Client) -> None:
-        result = await client.call_tool(SEARCH_TOOL, {'version': DOCS_VERSION, 'query': 'o'})
+        result = await client.call_tool(
+            SEARCH_TOOL, {'model_params': {'version': DOCS_VERSION, 'query': 'o'}}
+        )
         structured = result.structured_content
         assert structured is not None
         assert len(structured['matches']) <= 10
 
     async def test_read_frames_the_page_with_a_header_and_a_footer(self, client: Client) -> None:
-        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path', 'max_chars': 500}
+        arguments = {
+            'model_params': {'version': DOCS_VERSION, 'symbol': 'os.path', 'max_chars': 500}
+        }
         result = await client.call_tool(READ_TOOL, arguments)
         lines = first_text(result).splitlines()
         assert (
@@ -127,12 +139,12 @@ class TestCalls:
         )
 
     async def test_the_last_page_marks_the_end_of_the_section(self, client: Client) -> None:
-        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path.isfile'}
+        arguments = {'model_params': {'version': DOCS_VERSION, 'symbol': 'os.path.isfile'}}
         result = await client.call_tool(READ_TOOL, arguments)
         assert first_text(result).splitlines()[-1].startswith('End of section')
 
     async def test_an_unknown_symbol_is_a_tool_error_with_its_message(self, client: Client) -> None:
-        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path.nope'}
+        arguments = {'model_params': {'version': DOCS_VERSION, 'symbol': 'os.path.nope'}}
         result = await client.call_tool(READ_TOOL, arguments)
         assert (
             result.is_error,
@@ -143,7 +155,13 @@ class TestCalls:
     async def test_an_offset_past_the_section_end_is_a_tool_error_with_its_message(
         self, client: Client
     ) -> None:
-        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path.isfile', 'offset': 1_000_000}
+        arguments = {
+            'model_params': {
+                'version': DOCS_VERSION,
+                'symbol': 'os.path.isfile',
+                'offset': 1_000_000,
+            }
+        }
         result = await client.call_tool(READ_TOOL, arguments)
         assert (result.is_error, 'past the end of the section' in first_text(result)) == (
             True,
@@ -151,19 +169,21 @@ class TestCalls:
         )
 
     async def test_a_call_past_its_deadline_is_a_tool_error(self, stalled_client: Client) -> None:
-        arguments = {'version': DOCS_VERSION, 'query': 'os.path'}
+        arguments = {'model_params': {'version': DOCS_VERSION, 'query': 'os.path'}}
         result = await stalled_client.call_tool(SEARCH_TOOL, arguments)
         assert (result.is_error, 'deadline' in first_text(result)) == (True, True)
 
     async def test_a_read_past_its_deadline_is_a_tool_error(self, stalled_client: Client) -> None:
-        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path'}
+        arguments = {'model_params': {'version': DOCS_VERSION, 'symbol': 'os.path'}}
         result = await stalled_client.call_tool(READ_TOOL, arguments)
         assert (result.is_error, 'deadline' in first_text(result)) == (True, True)
 
     async def test_a_search_for_an_unpublished_version_is_a_tool_error_with_its_message(
         self, client: Client
     ) -> None:
-        result = await client.call_tool(SEARCH_TOOL, {'version': '3.9', 'query': 'os.path'})
+        result = await client.call_tool(
+            SEARCH_TOOL, {'model_params': {'version': '3.9', 'query': 'os.path'}}
+        )
         assert (result.is_error, 'documentation is not published' in first_text(result)) == (
             True,
             True,
@@ -171,7 +191,7 @@ class TestCalls:
 
     async def test_the_tool_inputs_exclude_the_injected_service(self, client: Client) -> None:
         listed = await client.list_tools()
-        properties = {tool.name: set(tool.input_schema['properties']) for tool in listed.tools}
+        properties = {tool.name: set(argument_fields(tool)) for tool in listed.tools}
         assert properties == {
             SEARCH_TOOL: {'version', 'query', 'limit'},
             READ_TOOL: {'version', 'symbol', 'offset', 'max_chars'},
@@ -184,7 +204,7 @@ class TestVersionDefault:
     ) -> None:
         listed = await client.list_tools()
         for tool in listed.tools:
-            version = tool.input_schema['properties']['version']
+            version = argument_fields(tool)['version']
             variants = version.get('anyOf', [version])
             text = next(variant for variant in variants if variant.get('type') == 'string')
             assert (
@@ -197,7 +217,7 @@ class TestVersionDefault:
     async def test_a_search_without_version_reads_the_project_floor(
         self, floor_client: Client
     ) -> None:
-        result = await floor_client.call_tool(SEARCH_TOOL, {'query': 'os.path'})
+        result = await floor_client.call_tool(SEARCH_TOOL, {'model_params': {'query': 'os.path'}})
         structured = result.structured_content
         assert structured is not None
         assert (result.is_error, structured['python_version']) == (False, DOCS_VERSION)
@@ -205,11 +225,13 @@ class TestVersionDefault:
     async def test_a_read_without_version_reads_the_project_floor(
         self, floor_client: Client
     ) -> None:
-        result = await floor_client.call_tool(READ_TOOL, {'symbol': 'os.path', 'max_chars': 500})
+        result = await floor_client.call_tool(
+            READ_TOOL, {'model_params': {'symbol': 'os.path', 'max_chars': 500}}
+        )
         assert first_text(result).startswith('os.path (module) | Python 3.13')
 
     async def test_an_explicit_version_wins_over_the_floor(self, floor_client: Client) -> None:
-        arguments = {'version': '3.9', 'symbol': 'os.path'}
+        arguments = {'model_params': {'version': '3.9', 'symbol': 'os.path'}}
         result = await floor_client.call_tool(READ_TOOL, arguments)
         assert (result.is_error, '3.13' in first_text(result)) == (True, False)
 
@@ -217,5 +239,7 @@ class TestVersionDefault:
     async def test_no_floor_is_a_tool_error_asking_for_version(
         self, client: Client, tool: str
     ) -> None:
-        result = await client.call_tool(tool, {'query': 'os.path', 'symbol': 'os.path'})
+        result = await client.call_tool(
+            tool, {'model_params': {'query': 'os.path', 'symbol': 'os.path'}}
+        )
         assert (result.is_error, 'Pass version' in first_text(result)) == (True, True)

@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, Annotated
 
-from pydantic import Field, NonNegativeInt, PositiveInt, StringConstraints
+from pydantic import Field, NonNegativeInt, PositiveInt, StringConstraints, WrapValidator
 from python_agent_tools_core.version import PythonVersion
 
 from python_docs_mcp.schemas import base as schemas
@@ -23,6 +23,9 @@ SymbolQuery = Annotated[
             ' not a question.'
         )
     ),
+    WrapValidator(
+        schemas.ArgumentRule(field='query', rule='must be text of 1 to 200 characters').check
+    ),
 ]
 TotalMatches = Annotated[
     NonNegativeInt, Field(description='Number of matches before the limit applies.')
@@ -31,7 +34,11 @@ MatchesTruncated = Annotated[
     bool, Field(description='True when the fuzzy match cap cut the matches short.')
 ]
 SearchLimit = Annotated[
-    PositiveInt, Field(le=30, description='Maximum number of matches to return.')
+    PositiveInt,
+    Field(le=30, description='Maximum number of matches to return.'),
+    WrapValidator(
+        schemas.ArgumentRule(field='limit', rule='must be a whole number from 1 to 30').check
+    ),
 ]
 
 

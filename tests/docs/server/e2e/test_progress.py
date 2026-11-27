@@ -79,8 +79,8 @@ async def open_client(
 class TestInventoryProgress:
     inventory = inventory_bytes()
 
-    def search_arguments(self) -> dict[str, str]:
-        return {'version': DOCS_VERSION, 'query': 'os.path.join'}
+    def search_arguments(self) -> dict[str, object]:
+        return {'model_params': {'version': DOCS_VERSION, 'query': 'os.path.join'}}
 
     @pytest.fixture
     async def client(self, harness: ServerHarness) -> AsyncGenerator[Client]:
@@ -113,7 +113,7 @@ class TestInventoryProgress:
         assert log.events[-1][0] == total
 
     async def test_a_cold_read_reports_progress(self, client: Client, log: ProgressLog) -> None:
-        arguments = {'version': DOCS_VERSION, 'symbol': 'os.path.join'}
+        arguments = {'model_params': {'version': DOCS_VERSION, 'symbol': 'os.path.join'}}
         await client.call_tool(READ_TOOL, arguments, progress_callback=log.record)
         assert log.events[-1][0] == float(len(self.inventory))
 
@@ -197,7 +197,7 @@ class TestConcurrentProgress:
     ) -> None:
         result = await client.call_tool(
             SEARCH_TOOL,
-            {'version': DOCS_VERSION, 'query': 'os.path.join'},
+            {'model_params': {'version': DOCS_VERSION, 'query': 'os.path.join'}},
             progress_callback=log.record,
         )
         results.append(not result.is_error)
