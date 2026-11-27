@@ -47,8 +47,17 @@ class CatalogLoader:
     parsers: anyio.CapacityLimiter
     settings: Settings
 
+    async def read_stored(self, version: PythonVersion) -> bytes | None:
+        return await anyio.to_thread.run_sync(self.store.read, version)
+
+    async def stored(self, version: PythonVersion) -> SymbolCatalog | None:
+        if (content := await self.read_stored(version)) is None:
+            return None
+
+        return await self.parse(content, version)
+
     async def inventory(self, version: PythonVersion) -> bytes:
-        if (stored := await anyio.to_thread.run_sync(self.store.read, version)) is not None:
+        if (stored := await self.read_stored(version)) is not None:
             return stored
 
         content = await self.source.fetch_inventory(version)
@@ -94,11 +103,9 @@ class DocumentationService:
         if (catalog := self.catalogs.peek(version)) is not None:
             return catalog
 
-        stored = await anyio.to_thread.run_sync(self.loader.store.read, version)
-        if stored is None:
+        if (catalog := await self.loader.stored(version)) is None:
             return None
 
-        catalog = await self.loader.parse(stored, version)
         self.catalogs.remember(version, FillSucceeded(catalog))
         return catalog
 
