@@ -36,10 +36,13 @@ def first_text(result: CallToolResult) -> str:
     return block.text
 
 
-def argument_fields(tool: Tool) -> dict[str, Any]:
+def argument_definition(tool: Tool) -> dict[str, Any]:
     reference = tool.input_schema['properties']['model_params']['$ref']
-    definition = tool.input_schema['$defs'][reference.rsplit('/', 1)[-1]]
-    return definition['properties']
+    return tool.input_schema['$defs'][reference.rsplit('/', 1)[-1]]
+
+
+def argument_fields(tool: Tool) -> dict[str, Any]:
+    return argument_definition(tool)['properties']
 
 
 @pytest.fixture
@@ -214,7 +217,7 @@ class TestVersionDefault:
             variants = version.get('anyOf', [version])
             text = next(variant for variant in variants if variant.get('type') == 'string')
             assert (
-                'version' in tool.input_schema.get('required', []),
+                'version' in argument_definition(tool).get('required', []),
                 {'type': 'null'} in variants,
                 'lower bound of the project' in text['description'],
                 text['pattern'].startswith('^'),
